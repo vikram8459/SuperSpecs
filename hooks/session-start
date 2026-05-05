@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# SessionStart hook for SuperSpecs (Cursor)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+using_superspecs_content=$(cat "${PLUGIN_ROOT}/skills/using-superspecs/SKILL.md" 2>&1 || echo "Error reading using-superspecs skill")
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+using_superspecs_escaped=$(escape_for_json "$using_superspecs_content")
+
+session_context="<EXTREMELY_IMPORTANT>\nYou have SuperSpecs.\n\n**Below is the full content of your 'superspecs:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**\n\n${using_superspecs_escaped}\n</EXTREMELY_IMPORTANT>"
+
+printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+
+exit 0

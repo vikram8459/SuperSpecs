@@ -1,0 +1,20 @@
+{
+  "name": "superspecs",
+  "version": "0.1.0",
+  "description": "Spec-Driven Development skills for Cursor: OpenSpec propose/apply/archive, brainstorming, planning, debugging, code review",
+  "author": {
+    "name": "SuperSpecs Contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "sdd",
+    "spec-driven-development",
+    "openspec",
+    "cursor",
+    "workflows"
+  ],
+  "skills": "./skills",
+  "commands": "./commands",
+  "hooks": "./hooks/hooks-cursor.json"
+}
