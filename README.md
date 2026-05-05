@@ -1,10 +1,41 @@
 # SuperSpecs
 
-**Spec-Driven Development skills framework for Cursor**, adapted from [obra/superpowers](https://github.com/obra/superpowers) and built around the [OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Cursor](https://img.shields.io/badge/Cursor-Plugin-000?logo=cursor)](https://cursor.com)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](#status)
+
+> **Spec-Driven Development skills framework for Cursor.** Built around the [OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow.
 
 Instead of jumping straight into code, your Cursor agent steps back, asks what you're really trying to build, captures the answer as an **OpenSpec change** (proposal, spec deltas, design, tasks), then implements task-by-task with each scenario verified against the spec.
 
-The spec — not a failing test — is the source of truth.
+**The spec — not a failing test — is the source of truth.**
+
+---
+
+## Table of Contents
+
+- [Why SuperSpecs?](#why-superspecs)
+- [How It Works](#how-it-works)
+- [Quick Start](#quick-start)
+- [Installation](#installation-cursor)
+- [The Basic Workflow](#the-basic-workflow)
+- [What's Inside](#whats-inside)
+- [Philosophy](#philosophy)
+- [Status](#status)
+- [Credits](#credits)
+- [License](#license)
+
+---
+
+## Why SuperSpecs?
+
+| Without SuperSpecs | With SuperSpecs |
+| --- | --- |
+| Agent dives into code on a vague prompt | Agent brainstorms intent first |
+| Requirements drift across the chat | Requirements pinned in `openspec/changes/` |
+| "Done" means "it compiles" | "Done" means every scenario verified |
+| Reviews are vibes | Reviews check code against spec deltas |
+| History is messy commits | History is task-by-task spec closures |
 
 ## How It Works
 
@@ -21,7 +52,19 @@ From the moment you start a task, the agent:
 5. **Reviews** with two-stage subagent review (spec compliance, then code quality)
 6. **Archives** completed changes — folds deltas into the active spec set at `openspec/specs/`
 
-Because the skills trigger automatically via the SessionStart hook, you don't need to do anything special. Your Cursor agent just has SuperSpecs.
+Because the skills trigger automatically via the `SessionStart` hook, you don't need to do anything special. Your Cursor agent just has SuperSpecs.
+
+## Quick Start
+
+```bash
+git clone https://github.com/vikram8459/SuperSpecs.git .superspecs
+```
+
+Point Cursor at `.superspecs/.cursor-plugin/plugin.json`, restart your Cursor session, and start a new chat with:
+
+> *"I want to add user authentication to my app."*
+
+The agent will activate `brainstorming` automatically and walk you through the spec-driven flow.
 
 ## Installation (Cursor)
 
@@ -30,14 +73,19 @@ This is currently a **local plugin** — clone or copy this repo into a director
 ### Option A: As a workspace plugin
 
 ```bash
-git clone <this-repo-url> .superspecs
+git clone https://github.com/vikram8459/SuperSpecs.git .superspecs
 ```
 
 Then point Cursor at `.superspecs/.cursor-plugin/plugin.json`.
 
 ### Option B: As a global Cursor plugin
 
-Copy or symlink the repo contents into your Cursor plugins directory and reference `plugin.json` from there. Refer to Cursor's plugin documentation for the current path on your platform.
+Copy or symlink the repo contents into your Cursor plugins directory:
+
+- **macOS / Linux**: `~/.cursor/plugins/superspecs/`
+- **Windows**: `%USERPROFILE%\.cursor\plugins\superspecs\`
+
+Reference `plugin.json` from there. See [Cursor's plugin documentation](https://docs.cursor.com) for the current canonical path on your platform.
 
 ### OpenSpec CLI (optional but recommended)
 
@@ -61,7 +109,7 @@ openspec init
 8. **`finishing-a-development-branch`** — When tasks complete. Verifies suite, presents merge/PR/keep/discard options, cleans up worktree.
 9. **`openspec-archive`** — After merge. Folds ADDED/MODIFIED/REMOVED deltas into the active `openspec/specs/` set so the active spec always reflects reality.
 
-**The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
+> **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
 
 ## What's Inside
 
@@ -87,21 +135,23 @@ openspec init
 
 ### Meta
 - **`writing-skills`** — Author new skills using a Red-Green-Refactor methodology
-- **`using-superspecs`** — Bootstrap skill auto-loaded by the SessionStart hook
+- **`using-superspecs`** — Bootstrap skill auto-loaded by the `SessionStart` hook
 
 ## Philosophy
 
 - **Spec-Driven Development** — The spec is the contract. Every line of production code closes a spec delta.
-- **Systematic over ad-hoc** — Process beats guessing
-- **Complexity reduction** — Simplicity as the primary goal
-- **Evidence over claims** — Verify every scenario, every time
+- **Systematic over ad-hoc** — Process beats guessing.
+- **Complexity reduction** — Simplicity as the primary goal.
+- **Evidence over claims** — Verify every scenario, every time.
+
+## Status
+
+**Alpha.** Actively used and refined. Skill names, hook contracts, and folder layouts may change before a 1.0 tag. Issues and PRs welcome — open an [issue](https://github.com/vikram8459/SuperSpecs/issues) if a skill misfires or a workflow needs sharpening.
 
 ## Credits
 
-SuperSpecs is maintained by Vikram Patel as a Cursor- and OpenSpec-focused fork of [Superpowers](https://github.com/obra/superpowers), originally created by [Jesse Vincent](https://blog.fsck.com) and Prime Radiant. The upstream framework's skill structure, prompt engineering, and SessionStart hook architecture are preserved here; the central workflow has been swapped from TDD to OpenSpec SDD ([Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec)).
-
-If you find this useful, please consider [sponsoring Jesse's open-source work](https://github.com/sponsors/obra) — none of this exists without his original framework.
+SuperSpecs is maintained by **Vikram Patel** as a Cursor- and OpenSpec-focused fork of [Superpowers](https://github.com/obra/superpowers). The upstream framework's skill structure, prompt engineering, and `SessionStart` hook architecture are preserved here; the central workflow is an OpenSpec-focused SDD workflow ([OpenSpec](https://github.com/Fission-AI/OpenSpec)).
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENSE`](./LICENSE).
