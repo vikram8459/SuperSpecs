@@ -16,3 +16,5 @@ hooks/session-start text eol=lf
 *.png binary
 *.jpg binary
 *.gif binary
+*.zip binary
+*.tar.gz binary
