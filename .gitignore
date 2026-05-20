@@ -3,3 +3,4 @@
 .superspecs/
 .DS_Store
 node_modules/
+releases/
