@@ -19,6 +19,7 @@ Instead of jumping straight into code, your Cursor agent steps back, asks what y
 - [Quick Start](#quick-start)
 - [Installation](#installation-cursor)
 - [The Basic Workflow](#the-basic-workflow)
+- [Slash Commands](#slash-commands)
 - [What's Inside](#whats-inside)
 - [Philosophy](#philosophy)
 - [Status](#status)
@@ -111,6 +112,27 @@ openspec init
 
 > **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
 
+## Slash Commands
+
+SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end OpenSpec workflow. The agent will reach these skills automatically as the workflow progresses; the slash commands are convenience entry points when you want to jump into a specific phase explicitly.
+
+| # | Command | Phase | Purpose | Notes |
+|---|---|---|---|---|
+| 1 | `/brainstorm` | Discovery | Refine a rough idea into an approved design via Socratic questioning, one question at a time. | Start here for any new feature or change. |
+| 2 | `/propose` | Proposal | Draft the OpenSpec change folder at `openspec/changes/<change-id>/` — `proposal.md`, spec deltas, `design.md`, `tasks.md`. | **Hard gate**: no production code until the proposal is reviewed and approved. |
+| 3 | `/write-plan` | Planning | Expand the approved change's `tasks.md` into a bite-sized executable plan where every step cites the spec delta and scenarios it closes. | Run after `/propose` is approved. Plan lives at `openspec/changes/<change-id>/plan.md`. |
+| 4 | `/execute-plan` | Implementation | Execute the plan task-by-task with OpenSpec-apply discipline: read spec → implement minimally → verify every scenario → commit. | Triggers two-stage review (spec compliance, then code quality) between tasks via `requesting-code-review`. |
+| 5 | `/archive` | Closeout | Fold ADDED / MODIFIED / REMOVED requirements into the active spec set at `openspec/specs/` and move the change folder to `openspec/changes/archive/YYYY-MM-DD-<change-id>/`. | Only run **after** implementation, code review, and merge. |
+
+**Canonical lifecycle:**
+
+```
+/brainstorm  →  /propose  →  /write-plan  →  /execute-plan  →  /archive
+  (idea)       (proposal)      (plan)        (implement)       (close)
+```
+
+**Skills without a slash command** activate automatically when their trigger conditions are met (e.g. `using-git-worktrees` after proposal approval, `requesting-code-review` between tasks, `systematic-debugging` on failure, `verification-before-completion` before any "done" claim). See [The Basic Workflow](#the-basic-workflow) for the full auto-triggered chain.
+
 ## What's Inside
 
 ### OpenSpec Workflow Skills
@@ -143,6 +165,7 @@ openspec init
 - **Systematic over ad-hoc** — Process beats guessing.
 - **Complexity reduction** — Simplicity as the primary goal.
 - **Evidence over claims** — Verify every scenario, every time.
+- **Built for brownfield, not just greenfield** — Works on existing codebases with legacy decisions, partial specs, and in-flight migrations.
 
 ## Status
 
