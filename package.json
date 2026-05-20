@@ -2,5 +2,8 @@
   "name": "superspecs",
   "version": "0.1.0",
   "description": "Spec-Driven Development skills framework for Cursor (OpenSpec-based)",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
+  }
 }
