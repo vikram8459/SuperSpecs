@@ -1,45 +1,54 @@
 : << 'CMDBLOCK'
 @echo off
 REM Cross-platform polyglot wrapper for hook scripts.
-REM On Windows: cmd.exe runs the batch portion, which finds and calls bash.
-REM On Unix: the shell interprets this as a script (: is a no-op in bash).
-REM
-REM Hook scripts use extensionless filenames (e.g. "session-start" not
-REM "session-start.sh") so Windows auto-detection in some agents -- which
-REM prepends "bash" to any command containing .sh -- doesn't interfere.
+REM On Windows: cmd.exe runs the batch portion, which calls PowerShell on <name>.ps1.
+REM On Unix:    bash interprets the rest of this file (: is a no-op in bash)
+REM             and execs the extensionless <name> script.
 REM
 REM Usage: run-hook.cmd <script-name> [args...]
+REM
+REM Windows requirement: built-in Windows PowerShell (Win10+) at
+REM   %SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe
+REM or PowerShell 7+ (pwsh) on PATH. If neither is present we emit a
+REM warning JSON envelope to stdout, a stderr line, and append to
+REM %TEMP%\superspecs-hook.log, then exit non-zero.
 
 if "%~1"=="" (
-    echo run-hook.cmd: missing script name >&2
-    exit /b 1
+    echo superspecs: run-hook.cmd missing script name 1>&2
+    exit /b 2
 )
 
 set "HOOK_DIR=%~dp0"
+set "SCRIPT_NAME=%~1"
+set "PS_SCRIPT=%HOOK_DIR%%SCRIPT_NAME%.ps1"
 
-REM Try Git for Windows bash in standard locations
-if exist "C:\Program Files\Git\bin\bash.exe" (
-    "C:\Program Files\Git\bin\bash.exe" "%HOOK_DIR%%~1" %2 %3 %4 %5 %6 %7 %8 %9
-    exit /b %ERRORLEVEL%
-)
-if exist "C:\Program Files (x86)\Git\bin\bash.exe" (
-    "C:\Program Files (x86)\Git\bin\bash.exe" "%HOOK_DIR%%~1" %2 %3 %4 %5 %6 %7 %8 %9
-    exit /b %ERRORLEVEL%
+if not exist "%PS_SCRIPT%" (
+    echo superspecs: missing PowerShell script "%PS_SCRIPT%" 1>&2
+    exit /b 3
 )
 
-REM Try bash on PATH (e.g. user-installed Git Bash, MSYS2, Cygwin)
-where bash >nul 2>nul
+REM 1) Built-in Windows PowerShell (always present on Win10+).
+set "PS_EXE=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+if exist "%PS_EXE%" (
+    "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" %2 %3 %4 %5 %6 %7 %8 %9
+    exit /b %ERRORLEVEL%
+)
+
+REM 2) PowerShell 7+ on PATH (optional fallback).
+where pwsh >nul 2>nul
 if %ERRORLEVEL% equ 0 (
-    bash "%HOOK_DIR%%~1" %2 %3 %4 %5 %6 %7 %8 %9
+    pwsh -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" %2 %3 %4 %5 %6 %7 %8 %9
     exit /b %ERRORLEVEL%
 )
 
-REM No bash found - exit silently rather than error
-REM (plugin still works, just without SessionStart context injection)
-exit /b 0
+REM 3) No PowerShell at all: emit in-context warning, stderr, and log, then exit non-zero.
+echo {"additional_context":"<EXTREMELY_IMPORTANT>SuperSpecs SessionStart hook FAILED (F3): no PowerShell found on Windows. The 'using-superspecs' skill was NOT loaded. Diagnostic log: %%TEMP%%\superspecs-hook.log. Do NOT pretend SuperSpecs discipline is active in this session - tell the user the framework failed to load.</EXTREMELY_IMPORTANT>"}
+echo superspecs: no PowerShell found; SuperSpecs context NOT injected; see %%TEMP%%\superspecs-hook.log 1>&2
+>> "%TEMP%\superspecs-hook.log" echo %DATE% %TIME%	F3	%SCRIPT_NAME%	no powershell.exe and no pwsh on PATH
+exit /b 4
 CMDBLOCK
 
-# Unix: run the named script directly
+# Unix: run the named script directly (unchanged behavior).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_NAME="$1"
 shift
