@@ -7,7 +7,7 @@ description: Use when implementing an approved OpenSpec change. Drives implement
 
 ## Overview
 
-This skill maps to OpenSpec's `/opsx:apply` step. It's how you turn an approved change folder (`openspec/changes/<change-id>/`) into working, spec-compliant code.
+This skill is the implementation behind the `/execute-plan` slash command (paired with `writing-plans` for per-task detail). It's how you turn an approved change folder (`openspec/changes/<change-id>/`) into working, spec-compliant code.
 
 **Core principle:** Every task closes a spec delta. A task is "done" only when its scenarios pass — not when the code "looks right."
 

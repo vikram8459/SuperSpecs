@@ -14,7 +14,7 @@ In Spec-Driven Development, the **spec is the source of truth**. Before any prod
 - **design.md** — technical decisions, alternatives considered, trade-offs
 - **tasks.md** — implementation checklist (each task ties back to a spec delta)
 
-This skill maps to OpenSpec's `/opsx:propose` step. After this skill, you hand off to `writing-plans` (for richer per-task detail) and then `openspec-apply` to implement.
+This skill is the implementation behind the `/propose` slash command. After this skill, you hand off to `writing-plans` (for richer per-task detail) and then `openspec-apply` to implement.
 
 **Announce at start:** "I'm using the openspec-propose skill to draft an OpenSpec change."
 

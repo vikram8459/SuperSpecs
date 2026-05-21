@@ -9,7 +9,7 @@ description: Use after an OpenSpec change has been implemented, reviewed, and me
 
 After a change is merged, its spec deltas (`ADDED`, `MODIFIED`, `REMOVED` requirements) must be **applied to the active spec set** at `openspec/specs/`. Otherwise the active specs drift from reality and future proposals build on a lie.
 
-This skill maps to OpenSpec's `/opsx:archive` step.
+This skill is the implementation behind the `/archive` slash command.
 
 **Announce at start:** "I'm using the openspec-archive skill to archive <change-id>."
 
