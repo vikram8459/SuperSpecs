@@ -26,10 +26,10 @@ You MUST create a task for each of these items and complete them in order:
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/specs/YYYY-MM-DD-<topic>-design.md` and commit (this becomes input for `openspec-propose`)
+6. **Write design doc** — save to `openspec/changes/<change-id>/design-notes.md` and commit (this becomes input for `spx:openspec-propose`)
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
 8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to OpenSpec** — invoke `superspecs:openspec-propose` to formalize the design as a change folder (proposal, spec deltas, design, tasks). Then `superspecs:writing-plans` to expand tasks into executable steps.
+9. **Transition to OpenSpec** — invoke `spx:openspec-propose` to formalize the design as a change folder (proposal, spec deltas, design, tasks). Then `spx:writing-plans` to expand tasks into executable steps.
 
 ## Process Flow
 
@@ -45,7 +45,7 @@ digraph brainstorming {
     "Write design doc" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
-    "Invoke writing-plans skill" [shape=doublecircle];
+    "Invoke openspec-propose skill" [shape=doublecircle];
 
     "Explore project context" -> "Visual questions ahead?";
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
@@ -63,7 +63,7 @@ digraph brainstorming {
 }
 ```
 
-**The terminal state is invoking `openspec-propose`** (which then hands off to `writing-plans`). Do NOT invoke any other implementation skill from brainstorming.
+**The terminal state is invoking `spx:openspec-propose`** (which then hands off to `spx:writing-plans`). Do NOT invoke any other implementation skill from brainstorming.
 
 ## The Process
 
@@ -108,8 +108,7 @@ digraph brainstorming {
 
 **Documentation:**
 
-- Write the validated design (spec) to `openspec/changes/<change-id>/design-notes.md` (rough notes — `openspec-propose` will produce the formal `design.md`).
-  - For pre-OpenSpec drafting you may temporarily write to `docs/specs/YYYY-MM-DD-<topic>-design.md`. Either is acceptable; user preferences override.
+- Write the validated design (rough notes) to `openspec/changes/<change-id>/design-notes.md`. `spx:openspec-propose` reads these notes and produces the formal `design.md` in the same change folder. This is the canonical path; there is no `docs/specs/` alternative.
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
 
@@ -132,9 +131,9 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 **Implementation:**
 
-- Invoke `superspecs:openspec-propose` to formalize the design as an OpenSpec change folder (proposal.md, spec deltas, design.md, tasks.md)
-- Then `superspecs:writing-plans` will expand tasks into executable steps
-- Do NOT invoke any other skill from brainstorming. `openspec-propose` is the next step.
+- Invoke `spx:openspec-propose` to formalize the design as an OpenSpec change folder (proposal.md, spec deltas, design.md, tasks.md)
+- Then `spx:writing-plans` will expand tasks into executable steps
+- Do NOT invoke any other skill from brainstorming. `spx:openspec-propose` is the next step.
 
 ## Key Principles
 

@@ -61,7 +61,7 @@ digraph process {
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Dispatch final code reviewer subagent for entire implementation" [shape=box];
-    "Use superspecs:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
+    "Use spx:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
@@ -80,7 +80,7 @@ digraph process {
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
-    "Dispatch final code reviewer subagent for entire implementation" -> "Use superspecs:finishing-a-development-branch";
+    "Dispatch final code reviewer subagent for entire implementation" -> "Use spx:finishing-a-development-branch";
 }
 ```
 
@@ -202,7 +202,7 @@ Done!
 ## Advantages
 
 **vs. Manual execution:**
-- Subagents follow `openspec-apply` (spec → verify → commit) naturally
+- Subagents follow `spx:openspec-apply` (spec → verify → commit) naturally
 - Fresh context per task (no confusion, no spec drift)
 - Parallel-safe (subagents don't interfere)
 - Subagent can ask questions (before AND during work)
@@ -265,15 +265,15 @@ Done!
 ## Integration
 
 **Required workflow skills:**
-- **superspecs:openspec-propose** — produces the change folder this skill executes against
-- **superspecs:using-git-worktrees** — REQUIRED: isolated workspace before starting
-- **superspecs:writing-plans** — creates the plan this skill executes
-- **superspecs:requesting-code-review** — code review template for reviewer subagents
-- **superspecs:finishing-a-development-branch** — complete development after all tasks
-- **superspecs:openspec-archive** — fold deltas into the active spec set after merge
+- **spx:openspec-propose** — produces the change folder this skill executes against
+- **spx:using-git-worktrees** — REQUIRED: isolated workspace before starting
+- **spx:writing-plans** — creates the plan this skill executes
+- **spx:requesting-code-review** — code review template for reviewer subagents
+- **spx:finishing-a-development-branch** — complete development after all tasks
+- **spx:openspec-archive** — fold deltas into the active spec set after merge
 
 **Subagents must use:**
-- **superspecs:openspec-apply** — drives each task: read spec delta → implement → verify scenarios → commit
+- **spx:openspec-apply** — drives each task: read spec delta → implement → verify scenarios → commit
 
 **Alternative workflow:**
-- **superspecs:executing-plans** — same-task discipline, batch execution with human checkpoints instead of subagent dispatch
+- **spx:executing-plans** — same-task discipline, batch execution with human checkpoints instead of subagent dispatch

@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use after openspec-propose, when you have an approved OpenSpec change folder. Expands tasks.md into bite-sized executable steps tied to spec deltas.
+description: Use after spx:openspec-propose, when you have an approved OpenSpec change folder. Expands tasks.md into bite-sized executable steps tied to spec deltas.
 ---
 
 # Writing Plans
@@ -13,7 +13,7 @@ Assume they are a skilled developer who knows almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to expand the OpenSpec change into an implementation plan."
 
-**Context:** This runs after `openspec-propose` has produced an approved change folder, inside a dedicated worktree (from `using-git-worktrees`). The plan elaborates `openspec/changes/<change-id>/tasks.md` — it does not replace it.
+**Context:** This runs after `spx:openspec-propose` has produced an approved change folder, inside a dedicated worktree (from `spx:using-git-worktrees`). The plan elaborates `openspec/changes/<change-id>/tasks.md` — it does not replace it.
 
 **Save plans to:** `openspec/changes/<change-id>/plan.md`
 - (User preferences for plan location override this default)
@@ -49,7 +49,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superspecs:openspec-apply to drive each task. Use superspecs:subagent-driven-development (recommended) or superspecs:executing-plans for the dispatch model. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use spx:openspec-apply to drive each task. Use spx:subagent-driven-development (recommended) or spx:executing-plans for the dispatch model. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Change ID:** `<change-id>` (folder: `openspec/changes/<change-id>/`)
 
@@ -78,7 +78,9 @@ This structure informs the task decomposition. Each task should produce self-con
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 
-- [ ] **Step 1: Verification stub for scenario `<scenario-1>`**
+- [ ] **Step 1: Scenario verification for `<scenario-1>`**
+
+This verification asserts the **scenario's THEN clause** — not "the code's behaviour." It expresses the GIVEN/WHEN/THEN from the spec delta. This is not TDD's "write a failing test first"; it's a check that the scenario is satisfied (see the **Verification vs. TDD** sidebar below).
 
 ```python
 def test_specific_behavior():
@@ -89,10 +91,10 @@ def test_specific_behavior():
     assert result == expected
 ```
 
-- [ ] **Step 2: Run verification, confirm it fails for the right reason**
+- [ ] **Step 2: Run verification, confirm it is wired up**
 
 Run: `pytest tests/path/test.py::test_name -v`
-Expected: FAIL with "function not defined" (proves the verification is wired up)
+Expected: the verification runs and produces a deterministic result against the current code. If the function does not yet exist, the run will error out — that's fine and confirms the verification reaches the code under spec. This is a wiring check, **not** the RED step in TDD.
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -145,6 +147,19 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. If you find a spec requirement with no task, add the task. If you find a scenario with no verification step, add it. No need to re-review — just fix and move on.
 
+## Verification vs. TDD
+
+SuperSpecs is **spec-driven, not test-driven.** The verification step in every task exists to prove a scenario from the spec is satisfied — it does **not** dictate when the test is written, nor does it require an initial failing run.
+
+- The **spec** is the source of truth (not a failing test).
+- The **scenario's GIVEN/WHEN/THEN** is what the verification expresses.
+- A passing verification means the scenario is satisfied; nothing else.
+- You may write the verification before, alongside, or after the implementation — whichever produces the strongest evidence the scenario is met.
+
+The "Step 2: confirm it is wired up" run is a *wiring check* (proves the verification actually reaches the code under spec), not the RED step of Red-Green-Refactor. Calling it RED conflates SDD with TDD.
+
+See also: `spx:openspec-apply` → "Verification vs. TDD" (lines 88–92).
+
 ## Execution Handoff
 
 After saving the plan, offer execution choice:
@@ -157,10 +172,10 @@ After saving the plan, offer execution choice:
 
 **Which approach?"**
 
-**Either way, the implementation skill is `superspecs:openspec-apply`** — it enforces the spec→verify→commit cycle. The choice above only changes the dispatch model:
+**Either way, the implementation skill is `spx:openspec-apply`** — it enforces the spec→verify→commit cycle. The choice above only changes the dispatch model:
 
 **If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILLS:** `superspecs:openspec-apply` + `superspecs:subagent-driven-development`
+- **REQUIRED SUB-SKILLS:** `spx:openspec-apply` + `spx:subagent-driven-development`
 
 **If Inline Execution chosen:**
-- **REQUIRED SUB-SKILLS:** `superspecs:openspec-apply` + `superspecs:executing-plans`
+- **REQUIRED SUB-SKILLS:** `spx:openspec-apply` + `spx:executing-plans`

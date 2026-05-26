@@ -7,7 +7,7 @@ description: Use when implementing an approved OpenSpec change. Drives implement
 
 ## Overview
 
-This skill is the implementation behind the `/execute-plan` slash command (paired with `writing-plans` for per-task detail). It's how you turn an approved change folder (`openspec/changes/<change-id>/`) into working, spec-compliant code.
+This skill is the implementation behind the `/execute-plan` slash command (paired with `spx:writing-plans` for per-task detail). It's how you turn an approved change folder (`openspec/changes/<change-id>/`) into working, spec-compliant code.
 
 **Core principle:** Every task closes a spec delta. A task is "done" only when its scenarios pass — not when the code "looks right."
 
@@ -17,10 +17,10 @@ This skill is the implementation behind the `/execute-plan` slash command (paire
 
 You have:
 - An approved OpenSpec change at `openspec/changes/<change-id>/`
-- A `tasks.md` (and ideally a detailed plan from `writing-plans`)
-- A clean working tree on the change branch (use `using-git-worktrees`)
+- A `tasks.md` (and ideally a detailed plan from `spx:writing-plans`)
+- A clean working tree on the change branch (use `spx:using-git-worktrees`)
 
-If any of those are missing, go back: brainstorming → openspec-propose → writing-plans first.
+If any of those are missing, go back: `spx:brainstorming` → `spx:openspec-propose` → `spx:writing-plans` first.
 
 ## The Iron Law
 
@@ -128,7 +128,7 @@ Before declaring the change implemented:
 3. **Diff against the active spec set** (`openspec/specs/`) to make sure no `MODIFIED` or `REMOVED` requirement was lost.
 4. **Run the full project test/build/lint suite.** Output must be pristine.
 
-Then hand off to `superspecs:requesting-code-review`. After review, run `superspecs:openspec-archive` to fold deltas into the active spec set.
+Then hand off to `spx:requesting-code-review`. After review, run `spx:openspec-archive` to fold deltas into the active spec set.
 
 ## Red Flags — STOP
 
@@ -152,15 +152,15 @@ Then hand off to `superspecs:requesting-code-review`. After review, run `supersp
 ## Integration
 
 **Required predecessors:**
-- `superspecs:openspec-propose` — the change folder must exist and be approved
-- `superspecs:writing-plans` — for detailed per-task steps
-- `superspecs:using-git-worktrees` — isolated branch for the change
+- `spx:openspec-propose` — the change folder must exist and be approved
+- `spx:writing-plans` — for detailed per-task steps
+- `spx:using-git-worktrees` — isolated branch for the change
 
 **Required successors:**
-- `superspecs:requesting-code-review` — between tasks and at the end
-- `superspecs:openspec-archive` — once merged, fold deltas into the active spec set
-- `superspecs:finishing-a-development-branch` — merge / PR / cleanup
+- `spx:requesting-code-review` — between tasks and at the end
+- `spx:openspec-archive` — once merged, fold deltas into the active spec set
+- `spx:finishing-a-development-branch` — merge / PR / cleanup
 
 **Alternative execution modes (still apply this skill's rules):**
-- `superspecs:subagent-driven-development` — fresh subagent per task
-- `superspecs:executing-plans` — batch execution with human checkpoints
+- `spx:subagent-driven-development` — fresh subagent per task
+- `spx:executing-plans` — batch execution with human checkpoints

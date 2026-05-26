@@ -38,7 +38,7 @@ Task tool (general-purpose):
     7. Self-review (see below)
     8. Report back
 
-    Follow the **superspecs:openspec-apply** skill rigorously. The spec is the source of truth.
+    Follow the **spx:openspec-apply** skill rigorously. The spec is the source of truth.
 
     Work from: [directory]
 

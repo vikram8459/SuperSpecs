@@ -8,7 +8,8 @@ Use this template when dispatching a code quality reviewer subagent.
 
 ```
 Task tool (general-purpose, role = code-reviewer):
-  Use template at superspecs:requesting-code-review/code-reviewer.md
+  Use template at skills/requesting-code-review/code-reviewer.md
+  (skill: spx:requesting-code-review)
 
   WHAT_WAS_IMPLEMENTED: [from implementer's report]
   SPEC_DELTAS: [paste the relevant blocks from openspec/changes/<change-id>/specs/...]

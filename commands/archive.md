@@ -2,4 +2,4 @@
 description: "Archive a completed OpenSpec change and fold its deltas into the active spec set"
 ---
 
-Use the `superspecs:openspec-archive` skill. Only run this after the change has been implemented, code-reviewed, and merged. The skill will apply ADDED/MODIFIED/REMOVED requirements to `openspec/specs/` and move the change folder to `openspec/changes/archive/YYYY-MM-DD-<change-id>/`.
+Use the `spx:openspec-archive` skill. Only run this after the change has been implemented, code-reviewed, and merged. The skill will apply ADDED/MODIFIED/REMOVED requirements to `openspec/specs/` and move the change folder to `openspec/changes/archive/YYYY-MM-DD-<change-id>/`.

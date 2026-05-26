@@ -4,7 +4,7 @@
 [![Cursor](https://img.shields.io/badge/Cursor-Plugin-000?logo=cursor)](https://cursor.com)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](#status)
 
-> **Spec-Driven Development skills framework for Cursor.** Built around the OpenSpec workflow.
+> **A Spec-Driven Development (SDD) skills framework.** Built around the OpenSpec workflow. The methodology and skill set are tool-agnostic; today the framework ships as a Cursor plugin.
 
 Instead of jumping straight into code, your Cursor agent steps back, asks what you're really trying to build, captures the answer as an **OpenSpec change** (proposal, spec deltas, design, tasks), then implements task-by-task with each scenario verified against the spec.
 
@@ -21,6 +21,8 @@ Instead of jumping straight into code, your Cursor agent steps back, asks what y
 - [The Basic Workflow](#the-basic-workflow)
 - [Slash Commands](#slash-commands)
 - [What's Inside](#whats-inside)
+- [Configuration](#configuration)
+- [Documentation](#documentation)
 - [Philosophy](#philosophy)
 - [Status](#status)
 - [License](#license)
@@ -89,15 +91,15 @@ Reference `plugin.json` from there. See [Cursor's plugin documentation](https://
 
 ## The Basic Workflow
 
-1. **`brainstorming`** — Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation.
-2. **`openspec-propose`** — Activates after design approval. Drafts the OpenSpec change folder (proposal, spec deltas, design, tasks). Hard gate: no production code until approved.
-3. **`using-git-worktrees`** — Activates after proposal approval. Creates an isolated branch, runs project setup, verifies clean baseline.
-4. **`writing-plans`** — Expands `tasks.md` into bite-sized executable steps. Every step references the spec delta and scenarios it closes.
-5. **`subagent-driven-development`** *or* **`executing-plans`** — Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes inline with human checkpoints.
-6. **`openspec-apply`** — Drives each task: read spec delta → implement minimally → verify every scenario → commit. The companion skill to whichever execution mode you chose.
-7. **`requesting-code-review`** — Between tasks. Reviews against spec deltas, reports issues by severity. Critical issues block progress.
-8. **`finishing-a-development-branch`** — When tasks complete. Verifies suite, presents merge/PR/keep/discard options, cleans up worktree.
-9. **`openspec-archive`** — After merge. Folds ADDED/MODIFIED/REMOVED deltas into the active `openspec/specs/` set so the active spec always reflects reality.
+1. **`spx:brainstorming`** — Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation.
+2. **`spx:openspec-propose`** — Activates after design approval. Drafts the OpenSpec change folder (proposal, spec deltas, design, tasks). Hard gate: no production code until approved.
+3. **`spx:using-git-worktrees`** — Activates after proposal approval. Creates an isolated branch, runs project setup, verifies clean baseline.
+4. **`spx:writing-plans`** — Expands `tasks.md` into bite-sized executable steps. Every step references the spec delta and scenarios it closes.
+5. **`spx:subagent-driven-development`** *or* **`spx:executing-plans`** — Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes inline with human checkpoints.
+6. **`spx:openspec-apply`** — Drives each task: read spec delta → implement minimally → verify every scenario → commit. The companion skill to whichever execution mode you chose.
+7. **`spx:requesting-code-review`** — Between tasks. Reviews against spec deltas, reports issues by severity. Critical issues block progress.
+8. **`spx:finishing-a-development-branch`** — When tasks complete. Verifies suite, presents merge/PR/keep/discard options, cleans up worktree.
+9. **`spx:openspec-archive`** — After merge. Folds ADDED/MODIFIED/REMOVED deltas into the active `openspec/specs/` set so the active spec always reflects reality.
 
 > **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
 
@@ -120,33 +122,33 @@ SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end O
   (idea)       (proposal)      (plan)        (implement)       (close)
 ```
 
-**Skills without a slash command** activate automatically when their trigger conditions are met (e.g. `using-git-worktrees` after proposal approval, `requesting-code-review` between tasks, `systematic-debugging` on failure, `verification-before-completion` before any "done" claim). See [The Basic Workflow](#the-basic-workflow) for the full auto-triggered chain.
+**Skills without a slash command** activate automatically when their trigger conditions are met (e.g. `spx:using-git-worktrees` after proposal approval, `spx:requesting-code-review` between tasks, `spx:systematic-debugging` on failure, `spx:verification-before-completion` before any "done" claim). See [The Basic Workflow](#the-basic-workflow) for the full auto-triggered chain.
 
 ## What's Inside
 
 ### OpenSpec Workflow Skills
-- **`openspec-propose`** — Draft proposal, spec deltas, design, tasks
-- **`openspec-apply`** — Per-task: spec → implement → verify → commit
-- **`openspec-archive`** — Fold completed deltas into active specs
+- **`spx:openspec-propose`** — Draft proposal, spec deltas, design, tasks
+- **`spx:openspec-apply`** — Per-task: spec → implement → verify → commit
+- **`spx:openspec-archive`** — Fold completed deltas into active specs
 
 ### Collaboration Skills
-- **`brainstorming`** — Socratic design refinement
-- **`writing-plans`** — Detailed implementation plans tied to spec deltas
-- **`executing-plans`** — Inline batch execution with human checkpoints
-- **`subagent-driven-development`** — Fresh subagent per task with two-stage review
-- **`dispatching-parallel-agents`** — Concurrent subagent workflows
-- **`requesting-code-review`** — Pre-merge review with spec-aware checklist
-- **`receiving-code-review`** — Responding to feedback
-- **`using-git-worktrees`** — Parallel development branches
-- **`finishing-a-development-branch`** — Merge / PR / cleanup workflow
+- **`spx:brainstorming`** — Socratic design refinement
+- **`spx:writing-plans`** — Detailed implementation plans tied to spec deltas
+- **`spx:executing-plans`** — Inline batch execution with human checkpoints
+- **`spx:subagent-driven-development`** — Fresh subagent per task with two-stage review
+- **`spx:dispatching-parallel-agents`** — Concurrent subagent workflows
+- **`spx:requesting-code-review`** — Pre-merge review with spec-aware checklist
+- **`spx:receiving-code-review`** — Responding to feedback
+- **`spx:using-git-worktrees`** — Parallel development branches
+- **`spx:finishing-a-development-branch`** — Merge / PR / cleanup workflow
 
 ### Quality / Debugging Skills
-- **`systematic-debugging`** — 4-phase root cause process
-- **`verification-before-completion`** — Evidence before claims, every scenario
+- **`spx:systematic-debugging`** — 4-phase root cause process
+- **`spx:verification-before-completion`** — Evidence before claims, every scenario
 
 ### Meta
-- **`writing-skills`** — Author new skills using a Red-Green-Refactor methodology
-- **`using-superspecs`** — Bootstrap skill auto-loaded by the `SessionStart` hook
+- **`spx:writing-skills`** — Author new skills using a Red-Green-Refactor methodology
+- **`spx:using-superspecs`** — Bootstrap skill auto-loaded by the `SessionStart` hook
 
 ## Philosophy
 
@@ -155,6 +157,22 @@ SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end O
 - **Complexity reduction** — Simplicity as the primary goal.
 - **Evidence over claims** — Verify every scenario, every time.
 - **Built for brownfield, not just greenfield** — Works on existing codebases with legacy decisions, partial specs, and in-flight migrations.
+
+## Configuration
+
+- **`SUPERSPECS_MODE`** — `strict` | `auto` (default) | `manual`. Controls
+  how aggressively skills self-trigger. See
+  [`skills/using-superspecs/SKILL.md`](./skills/using-superspecs/SKILL.md)
+  for the behaviour per mode and the **Skip skills when** bypass list.
+
+## Documentation
+
+- [`AGENTS.md`](./AGENTS.md) — harness-agnostic agent instructions (mirrors the SessionStart hook payload).
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — how to author skills, run evals, and submit changes.
+- [`CHANGELOG.md`](./CHANGELOG.md) — versioned change log (Keep a Changelog format).
+- [`docs/architecture.md`](./docs/architecture.md) — hook contract, skill discovery, slash-command lifecycle, OpenSpec folder layout, ADRs.
+- [`docs/openspec-walkthrough.md`](./docs/openspec-walkthrough.md) — end-to-end worked example.
+- [`docs/skill-authoring.md`](./docs/skill-authoring.md) — conventions for writing skills.
 
 ## Status
 

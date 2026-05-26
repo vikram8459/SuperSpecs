@@ -4,7 +4,7 @@ Use this template when dispatching a spec document reviewer subagent.
 
 **Purpose:** Verify the spec is complete, consistent, and ready for implementation planning.
 
-**Dispatch after:** Spec document is written to `docs/specs/` (or design notes drafted for `openspec-propose`)
+**Dispatch after:** Spec document is written to `openspec/changes/<change-id>/design-notes.md` (input for `spx:openspec-propose`)
 
 ```
 Task tool (general-purpose):

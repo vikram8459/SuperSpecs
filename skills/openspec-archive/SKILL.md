@@ -28,7 +28,7 @@ Do NOT archive a change whose code hasn't merged. Archive = "this is now reality
 ARCHIVING = APPLYING DELTAS TO THE ACTIVE SPEC SET, FAITHFULLY
 ```
 
-If any delta in the change is *not* yet reflected in code, do not archive — go back to `openspec-apply` and finish the work.
+If any delta in the change is *not* yet reflected in code, do not archive — go back to `spx:openspec-apply` and finish the work.
 
 ## Checklist
 
@@ -115,7 +115,7 @@ Then tell the user:
 
 ## Red Flags — STOP
 
-- A delta was never implemented but you're about to archive it → go back to `openspec-apply`
+- A delta was never implemented but you're about to archive it → go back to `spx:openspec-apply`
 - A `MODIFIED` requirement's new text doesn't match what the code actually does → the implementation drifted; fix the code or fix the delta, then re-review
 - The active spec already had a requirement with the same name as an `ADDED` delta → the proposal author treated a modification as an addition; reconcile before archiving
 - You're tempted to "tidy up" unrelated requirements while you're in there → don't. That's a separate proposal.
@@ -124,9 +124,9 @@ Then tell the user:
 ## Integration
 
 **Required predecessors:**
-- `superspecs:openspec-apply` — all tasks complete and verified
-- `superspecs:requesting-code-review` — change has been reviewed
-- `superspecs:finishing-a-development-branch` — change has been merged
+- `spx:openspec-apply` — all tasks complete and verified
+- `spx:requesting-code-review` — change has been reviewed
+- `spx:finishing-a-development-branch` — change has been merged
 
 **Successor:**
 - Next proposal can now build on the updated active spec set
