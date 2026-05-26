@@ -14,7 +14,9 @@ In Spec-Driven Development, the **spec is the source of truth**. Before any prod
 - **design.md** — technical decisions, alternatives considered, trade-offs
 - **tasks.md** — implementation checklist (each task ties back to a spec delta)
 
-This skill is the implementation behind the `/propose` slash command. After this skill, you hand off to `writing-plans` (for richer per-task detail) and then `openspec-apply` to implement.
+This skill is the implementation behind the `/propose` slash command. After this skill, you hand off to `spx:writing-plans` (for richer per-task detail) and then `spx:openspec-apply` to implement.
+
+**Input:** `openspec/changes/<change-id>/design-notes.md` (produced by `spx:brainstorming`).
 
 **Announce at start:** "I'm using the openspec-propose skill to draft an OpenSpec change."
 
@@ -75,7 +77,7 @@ Create a TodoWrite item for each step and complete in order:
 5. **Write design.md** — key technical decisions, alternatives, trade-offs (only the non-obvious ones)
 6. **Write tasks.md** — checklist of implementation tasks, each tied to a spec delta
 7. **Self-review** — placeholder scan, internal consistency, scope check, ambiguity check
-8. **Get user approval** — show the proposal, wait for explicit go-ahead before invoking `writing-plans` or `openspec-apply`
+8. **Get user approval** — show the proposal, wait for explicit go-ahead before invoking `spx:writing-plans` or `spx:openspec-apply`
 
 ## proposal.md Template
 
@@ -126,7 +128,7 @@ A delta file lives at `openspec/changes/<change-id>/specs/<capability>/spec.md`.
 <Reason for removal.>
 ```
 
-Every requirement MUST have at least one scenario. Scenarios are how `openspec-apply` and reviewers verify implementation.
+Every requirement MUST have at least one scenario. Scenarios are how `spx:openspec-apply` and reviewers verify implementation.
 
 ## design.md Template
 
@@ -162,7 +164,7 @@ Keep this short. Only document decisions that aren't obvious from the spec.
   - Files: ...
 ```
 
-Tasks may be coarse here; `writing-plans` will expand each into bite-sized steps.
+Tasks may be coarse here; `spx:writing-plans` will expand each into bite-sized steps.
 
 ## No Placeholders
 
@@ -192,9 +194,9 @@ Once the proposal passes self-review, present it:
 > - **What:** <bulleted list>
 > - **Affected capabilities:** <list>
 >
-> Please review the files and let me know if anything needs to change before I move to `writing-plans`."
+> Please review the files and let me know if anything needs to change before I move to `spx:writing-plans`."
 
-**Wait for explicit approval.** Do NOT invoke `writing-plans`, `openspec-apply`, or any implementation skill until the user says go.
+**Wait for explicit approval.** Do NOT invoke `spx:writing-plans`, `spx:openspec-apply`, or any implementation skill until the user says go.
 
 ## Red Flags — STOP and Restart
 
@@ -208,11 +210,11 @@ Once the proposal passes self-review, present it:
 ## Integration
 
 **Required predecessor:**
-- `superspecs:brainstorming` — the proposal builds on the approved design
+- `spx:brainstorming` — the proposal builds on the approved design
 
 **Required successor:**
-- `superspecs:writing-plans` — expand `tasks.md` into bite-sized executable steps
+- `spx:writing-plans` — expand `tasks.md` into bite-sized executable steps
 
 **Then:**
-- `superspecs:openspec-apply` — implement the tasks against the spec
-- `superspecs:openspec-archive` — after merge, fold deltas into the active spec set
+- `spx:openspec-apply` — implement the tasks against the spec
+- `spx:openspec-archive` — after merge, fold deltas into the active spec set

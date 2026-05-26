@@ -45,9 +45,35 @@ In Cursor, skills are exposed as files under `skills/<skill-name>/SKILL.md` insi
 
 # Using Skills
 
+## Skip skills when
+
+The 1% rule does **not** require ceremony for tasks where no skill plausibly applies. Skip the skill machinery for:
+
+- **Read-only inspection** — "what does this file do?", "show me the imports". Example: *"read README.md and summarize it"*.
+- **Formatting / whitespace** — running a formatter, fixing trailing whitespace, sorting imports. Example: *"run prettier on src/"*.
+- **Single-line typo fixes** — a docstring spelling fix, a comment correction. Example: *"fix the typo 'recieve' → 'receive' in handler.ts"*.
+- **Exploratory shell commands** — `ls`, `git log`, `git status`, `npm ls`. Example: *"what's the current git branch?"*.
+- **Direct questions about the repo or skills themselves** — answer the question; do not open a brainstorm. Example: *"what does the `spx:openspec-archive` skill do?"*.
+
+For these, answer or act directly. If the task expands beyond the bypass case mid-response (a "typo fix" turns into a refactor, an "inspection" becomes a redesign), invoke the relevant skill at that point.
+
+This list is the bypass clause that the Red Flags table below references. A flowchart longer than the answer is its own anti-pattern.
+
+## Mode override: `SUPERSPECS_MODE`
+
+The environment variable `SUPERSPECS_MODE` lets the user override the default triggering posture:
+
+| Value      | Behaviour |
+|------------|-----------|
+| `strict`   | The 1% rule applies to every request, including bypass cases. Use during onboarding, audits, or eval runs. |
+| `auto`     | **Default.** 1% rule applies unless the request matches a documented "Skip skills when" case. |
+| `manual`   | Skills only run when explicitly invoked by the user (`use spx:<name>` or `/<command>`). For experienced users who want a quiet agent. |
+
+The mode is informational today — there is no runtime check yet (future work: `spx:doctor`). Document the value the user chooses in the chat, and respect it for the session.
+
 ## The Rule
 
-**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
+**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it. Exception: requests that match the **Skip skills when** list above — for those, answer directly.
 
 ```dot
 digraph skill_flow {
@@ -87,7 +113,7 @@ These thoughts mean STOP—you're rationalizing:
 
 | Thought | Reality |
 |---------|---------|
-| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "This is just a simple question" | Simple questions get direct answers (see "Skip skills when" above). Check for skills only when a skill plausibly applies. A flowchart longer than the answer is its own anti-pattern. |
 | "I need more context first" | Skill check comes BEFORE clarifying questions. |
 | "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
 | "Let me gather information first" | Skills tell you HOW to gather information. |
@@ -103,16 +129,16 @@ These thoughts mean STOP—you're rationalizing:
 
 When multiple skills could apply, use this order:
 
-1. **Process skills first** (brainstorming, openspec-propose, systematic-debugging) — these determine HOW to approach the task
-2. **Implementation skills second** (writing-plans, openspec-apply, subagent-driven-development) — these guide execution
-3. **Cleanup skills last** (openspec-archive, finishing-a-development-branch)
+1. **Process skills first** (`spx:brainstorming`, `spx:openspec-propose`, `spx:systematic-debugging`) — these determine HOW to approach the task
+2. **Implementation skills second** (`spx:writing-plans`, `spx:openspec-apply`, `spx:subagent-driven-development`) — these guide execution
+3. **Cleanup skills last** (`spx:openspec-archive`, `spx:finishing-a-development-branch`)
 
-"Let's build X" → brainstorming first, then openspec-propose, then writing-plans.
-"Fix this bug" → systematic-debugging first; if the fix changes spec'd behavior, openspec-propose before coding.
+"Let's build X" → `spx:brainstorming` first, then `spx:openspec-propose`, then `spx:writing-plans`.
+"Fix this bug" → `spx:systematic-debugging` first; if the fix changes spec'd behavior, `spx:openspec-propose` before coding.
 
 ## Skill Types
 
-**Rigid** (openspec-propose, openspec-apply, systematic-debugging): Follow exactly. Don't adapt away discipline.
+**Rigid** (`spx:openspec-propose`, `spx:openspec-apply`, `spx:systematic-debugging`): Follow exactly. Don't adapt away discipline.
 
 **Flexible** (patterns): Adapt principles to context.
 

@@ -176,7 +176,7 @@ You MUST complete each phase before proceeding to the next.
    - Automated test if possible (preferred)
    - One-off script if no test framework available
    - MUST have before fixing — this becomes the verification artifact for the fix
-   - If the bug reveals a missing or wrong requirement, the fix may need an OpenSpec change. In that case, draft a `superspecs:openspec-propose` change first; the failing reproduction becomes the scenario.
+   - If the bug reveals a missing or wrong requirement, the fix may need an OpenSpec change. In that case, draft a `spx:openspec-propose` change first; the failing reproduction becomes the scenario.
 
 2. **Implement Single Fix**
    - Address the root cause identified
@@ -284,8 +284,8 @@ These techniques are part of systematic debugging and available in this director
 - **`condition-based-waiting.md`** - Replace arbitrary timeouts with condition polling
 
 **Related skills:**
-- **superspecs:verification-before-completion** — verify fix worked before claiming success
-- **superspecs:openspec-propose** — when the bug reveals a missing/wrong requirement, draft a change before fixing
+- **spx:verification-before-completion** — verify fix worked before claiming success
+- **spx:openspec-propose** — when the bug reveals a missing/wrong requirement, draft a change before fixing
 
 ## Real-World Impact
 

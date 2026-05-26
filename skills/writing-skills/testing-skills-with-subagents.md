@@ -2,15 +2,22 @@
 
 **Load this reference when:** creating or editing skills, before deployment, to verify they work under pressure and resist rationalization.
 
+> **Scope note:** Every "TDD" reference in this document is about
+> **skill-authoring meta-process** — applying a Red-Green-Refactor cycle to
+> *the skill document itself*. SuperSpecs' production-code workflow is
+> spec-driven (`spx:openspec-apply`, `spx:writing-plans`); the
+> spec, not a failing test, is the source of truth. Do not generalize the
+> TDD framing below to production code.
+
 ## Overview
 
-**Testing skills is just TDD applied to process documentation.**
+**Testing skills is just TDD applied to process documentation (skill-authoring meta-process — not production code; see scope note above).**
 
 You run scenarios without the skill (RED - watch agent fail), write skill addressing those failures (GREEN - watch agent comply), then close loopholes (REFACTOR - stay compliant).
 
 **Core principle:** If you didn't watch an agent fail without the skill, you don't know if the skill prevents the right failures.
 
-**REQUIRED BACKGROUND:** You MUST understand the Red-Green-Refactor cycle described at the top of `superspecs:writing-skills` before using this skill. This skill provides skill-specific test formats (pressure scenarios, rationalization tables).
+**REQUIRED BACKGROUND:** You MUST understand the Red-Green-Refactor cycle described at the top of `spx:writing-skills` before using this skill. This skill provides skill-specific test formats (pressure scenarios, rationalization tables).
 
 ## When to Use
 

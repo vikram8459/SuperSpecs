@@ -3,5 +3,11 @@
 .superspecs/
 .DS_Store
 node_modules/
+
+# Releases ship via GitHub Release attachments, not committed binaries.
+# See docs/architecture.md ADR-001.
 releases/
+
+# scripts/ contains local release tooling; not tracked.
+# See docs/architecture.md ADR-001.
 scripts/

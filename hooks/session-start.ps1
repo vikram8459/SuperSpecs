@@ -52,7 +52,7 @@ try {
     # Normalize line endings to \n so Windows and Unix emit identical payloads.
     $skill = $skill -replace "`r`n", "`n" -replace "`r", "`n"
 
-    $envelope = "<EXTREMELY_IMPORTANT>`nYou have SuperSpecs.`n`n**Below is the full content of your 'superspecs:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**`n`n$skill`n</EXTREMELY_IMPORTANT>"
+    $envelope = "<EXTREMELY_IMPORTANT>`nYou have SuperSpecs.`n`n**Below is the full content of your 'spx:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**`n`n$skill`n</EXTREMELY_IMPORTANT>"
 
     $obj  = [ordered]@{ additional_context = $envelope }
     $json = $obj | ConvertTo-Json -Compress -Depth 4

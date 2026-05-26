@@ -1,8 +1,17 @@
 {
   "name": "superspecs",
   "version": "0.1.0",
-  "description": "Spec-Driven Development skills framework for Cursor (OpenSpec-based)",
+  "description": "Spec-Driven Development (SDD) skills framework, OpenSpec-based. Cursor plugin today; methodology is tool-agnostic.",
   "license": "MIT",
+  "author": "SuperSpecs Contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikram8459/SuperSpecs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vikram8459/SuperSpecs/issues"
+  },
+  "homepage": "https://github.com/vikram8459/SuperSpecs#readme",
   "scripts": {
     "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
   }

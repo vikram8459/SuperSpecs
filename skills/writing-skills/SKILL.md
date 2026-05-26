@@ -7,7 +7,7 @@ description: Use when creating new skills, editing existing skills, or verifying
 
 ## Overview
 
-**Writing skills uses a Red-Green-Refactor methodology applied to process documentation.** Even though SuperSpecs centers Spec-Driven Development for *production code*, skill authoring itself benefits from the test-first metaphor: you don't know a skill works until you've watched an agent fail without it and succeed with it.
+**Writing skills uses a Red-Green-Refactor methodology — skill-authoring meta-process only, distinct from production code.** SuperSpecs centers **Spec-Driven Development (SDD)** for production code: the spec, not a failing test, is the source of truth (`spx:openspec-apply`, `spx:writing-plans`). The Red-Green-Refactor framing below applies **only** to the meta-process of authoring skills, where you must watch an agent fail without the skill and succeed with it. Do not generalize this metaphor to production code workflows.
 
 **Personal skills live in agent-specific directories (Cursor: `~/.cursor/skills/` or workspace `.cursor/skills/`)**.
 
@@ -41,6 +41,8 @@ A **skill** is a reference guide for proven techniques, patterns, or tools. Skil
 | **Refactor cycle** | Find new rationalizations → plug → re-verify |
 
 The entire skill creation process follows this cycle.
+
+> **Scope note:** This mapping is for **skill authoring**, not production code. For production code, see `spx:openspec-apply` and the "Verification vs. TDD" sidebar in `spx:writing-plans`.
 
 ## When to Create a Skill
 
@@ -278,8 +280,8 @@ wc -w skills/path/SKILL.md
 **When writing documentation that references other skills:**
 
 Use skill name only, with explicit requirement markers:
-- ✅ Good: `**REQUIRED SUB-SKILL:** Use superspecs:openspec-apply`
-- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand superspecs:systematic-debugging`
+- ✅ Good: `**REQUIRED SUB-SKILL:** Use spx:openspec-apply`
+- ✅ Good: `**REQUIRED BACKGROUND:** You MUST understand spx:systematic-debugging`
 - ❌ Bad: `See skills/testing/test-driven-development` (unclear if required)
 - ❌ Bad: `@skills/testing/test-driven-development/SKILL.md` (force-loads, burns context)
 
@@ -396,7 +398,7 @@ Different skill types need different test approaches:
 
 ### Discipline-Enforcing Skills (rules/requirements)
 
-**Examples:** openspec-propose (no code without spec), openspec-apply (no task closed without scenario evidence), verification-before-completion
+**Examples:** `spx:openspec-propose` (no code without spec), `spx:openspec-apply` (no task closed without scenario evidence), `spx:verification-before-completion`
 
 **Test with:**
 - Academic questions: Do they understand the rules?
@@ -456,7 +458,7 @@ Different skill types need different test approaches:
 
 ## Bulletproofing Skills Against Rationalization
 
-Skills that enforce discipline (like openspec-propose, openspec-apply, verification-before-completion) need to resist rationalization. Agents are smart and will find loopholes when under pressure.
+Skills that enforce discipline (like `spx:openspec-propose`, `spx:openspec-apply`, `spx:verification-before-completion`) need to resist rationalization. Agents are smart and will find loopholes when under pressure.
 
 **Psychology note:** Understanding WHY persuasion techniques work helps you apply them systematically. See persuasion-principles.md for research foundation (Cialdini, 2021; Meincke et al., 2025) on authority, commitment, scarcity, social proof, and unity principles.
 
@@ -650,4 +652,4 @@ Iron Law: No skill without a failing test (pressure scenario) first.
 Cycle: RED (baseline) → GREEN (write skill) → REFACTOR (close loopholes).
 Benefits: Better quality, fewer surprises, bulletproof results.
 
-This is the methodology for skill *authoring* — the production code workflow in SuperSpecs is **Spec-Driven Development** via `openspec-propose` / `openspec-apply` / `openspec-archive`.
+This is the methodology for skill *authoring* — the production code workflow in SuperSpecs is **Spec-Driven Development** via `spx:openspec-propose` / `spx:openspec-apply` / `spx:openspec-archive`.

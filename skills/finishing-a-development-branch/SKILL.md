@@ -193,8 +193,8 @@ git worktree remove <worktree-path>
 ## Integration
 
 **Called by:**
-- **subagent-driven-development** (Step 7) - After all tasks complete
-- **executing-plans** (Step 5) - After all batches complete
+- **`spx:subagent-driven-development`** (Step 7) - After all tasks complete
+- **`spx:executing-plans`** (Step 5) - After all batches complete
 
 **Pairs with:**
-- **using-git-worktrees** - Cleans up worktree created by that skill
+- **`spx:using-git-worktrees`** - Cleans up worktree created by that skill
