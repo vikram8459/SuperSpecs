@@ -62,7 +62,7 @@ openspec/
             └── <capability>/spec.md   # delta only
 ```
 
-If `openspec/` doesn't exist yet in the repo, run `openspec init` (Fission-AI/OpenSpec CLI) or scaffold the folders manually — either is fine.
+If `openspec/` doesn't exist yet in the repo, create the folders directly: `openspec/specs/` for the active spec set and `openspec/changes/` for in-flight proposals.
 
 ## Checklist
 
@@ -195,18 +195,6 @@ Once the proposal passes self-review, present it:
 > Please review the files and let me know if anything needs to change before I move to `writing-plans`."
 
 **Wait for explicit approval.** Do NOT invoke `writing-plans`, `openspec-apply`, or any implementation skill until the user says go.
-
-## Using the openspec CLI (optional)
-
-If `openspec` (Fission-AI) is installed:
-
-```bash
-openspec change add <change-id>      # scaffolds the folder
-openspec validate <change-id>        # checks delta format & scenario coverage
-openspec show <change-id>            # renders proposal + deltas
-```
-
-These are conveniences. The skill works without them as long as the folder layout matches.
 
 ## Red Flags — STOP and Restart
 

@@ -40,7 +40,7 @@ Create a TodoWrite item for each step:
 4. **Apply MODIFIED requirements** — replace the matching requirement block in the active spec; preserve any unchanged scenarios from the active spec only if the delta did not redefine them
 5. **Apply REMOVED requirements** — delete the matching requirement block from the active spec; if other requirements referenced it, update those references
 6. **Move the change folder to archive** — `openspec/changes/archive/YYYY-MM-DD-<change-id>/` (date prefix = merge date)
-7. **Run validation** — `openspec validate` (if CLI present) OR a manual scan: every requirement in active specs has at least one scenario; no orphan references
+7. **Run validation** — manual scan: every requirement in active specs has at least one scenario; no orphan references (see Validation Pass below)
 8. **Commit** — `chore(openspec): archive <change-id>` with the spec set diff and the moved folder
 9. **Announce completion** to the user with a summary of which capabilities changed
 
@@ -82,7 +82,7 @@ Keep the archived folder intact — it's the historical record of *why* the acti
 
 ## Validation Pass
 
-Whether or not the `openspec` CLI is available, manually verify:
+Manually verify:
 
 - [ ] Every requirement in `openspec/specs/**` has at least one scenario
 - [ ] No two requirements share the same name within a capability
@@ -90,7 +90,7 @@ Whether or not the `openspec` CLI is available, manually verify:
 - [ ] All scenarios in the merged change are present in the active spec set (for ADDED/MODIFIED) or absent (for REMOVED)
 - [ ] The archived change folder contains everything it had before the move
 
-If `openspec validate` is available, run it and resolve any errors before committing.
+Resolve any issues before committing.
 
 ## Commit & Announce
 

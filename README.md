@@ -4,7 +4,7 @@
 [![Cursor](https://img.shields.io/badge/Cursor-Plugin-000?logo=cursor)](https://cursor.com)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](#status)
 
-> **Spec-Driven Development skills framework for Cursor.** Built around the [OpenSpec](https://github.com/Fission-AI/OpenSpec) workflow.
+> **Spec-Driven Development skills framework for Cursor.** Built around the OpenSpec workflow.
 
 Instead of jumping straight into code, your Cursor agent steps back, asks what you're really trying to build, captures the answer as an **OpenSpec change** (proposal, spec deltas, design, tasks), then implements task-by-task with each scenario verified against the spec.
 
@@ -23,7 +23,6 @@ Instead of jumping straight into code, your Cursor agent steps back, asks what y
 - [What's Inside](#whats-inside)
 - [Philosophy](#philosophy)
 - [Status](#status)
-- [Credits](#credits)
 - [License](#license)
 
 ---
@@ -87,16 +86,6 @@ Copy or symlink the repo contents into your Cursor plugins directory:
 - **Windows**: `%USERPROFILE%\.cursor\plugins\superspecs\`
 
 Reference `plugin.json` from there. See [Cursor's plugin documentation](https://docs.cursor.com) for the current canonical path on your platform.
-
-### OpenSpec CLI (optional but recommended)
-
-The skills work without it, but the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) gives you `openspec init`, `openspec change add`, and `openspec validate`:
-
-```bash
-npm install -g @fission-ai/openspec
-cd your-project
-openspec init
-```
 
 ## The Basic Workflow
 
@@ -170,10 +159,6 @@ SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end O
 ## Status
 
 **Alpha.** Actively used and refined. Skill names, hook contracts, and folder layouts may change before a 1.0 tag. Issues and PRs welcome — open an [issue](https://github.com/vikram8459/SuperSpecs/issues) if a skill misfires or a workflow needs sharpening.
-
-## Credits
-
-SuperSpecs is maintained by **Vikram Patel** as a Cursor- and OpenSpec-focused fork of [Superpowers](https://github.com/obra/superpowers). The upstream framework's skill structure, prompt engineering, and `SessionStart` hook architecture are preserved here; the central workflow is an OpenSpec-focused SDD workflow ([OpenSpec](https://github.com/Fission-AI/OpenSpec)).
 
 ## License
 
