@@ -1,6 +1,9 @@
 {
-  "name": "superspecs",
+  "name": "@superspecs/cli",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Spec-Driven Development (SDD) skills framework, OpenSpec-based. Cursor plugin today; methodology is tool-agnostic.",
   "license": "MIT",
   "author": "SuperSpecs Contributors",

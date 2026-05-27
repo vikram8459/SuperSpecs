@@ -17,6 +17,7 @@ Instead of jumping straight into code, your Cursor agent steps back, asks what y
 - [Why SuperSpecs?](#why-superspecs)
 - [How It Works](#how-it-works)
 - [Quick Start](#quick-start)
+- [CLI Quickstart](#cli-quickstart)
 - [Installation](#installation-cursor)
 - [The Basic Workflow](#the-basic-workflow)
 - [Slash Commands](#slash-commands)
@@ -67,6 +68,62 @@ Point Cursor at `.superspecs/.cursor-plugin/plugin.json`, restart your Cursor se
 > *"I want to add user authentication to my app."*
 
 The agent will activate `brainstorming` automatically and walk you through the spec-driven flow.
+
+## CLI Quickstart
+
+SuperSpecs also ships a CLI (`@superspecs/cli`) that mechanically
+validates and manages your OpenSpec change folders. Use it on its
+own or alongside the Cursor plugin.
+
+### Install
+
+```bash
+npm install -g @superspecs/cli
+superspecs --version
+```
+
+### Common commands
+
+```bash
+# Initialize openspec/ in the current directory.
+superspecs init
+
+# Validate every in-flight change against the JSON Schemas.
+superspecs validate
+
+# Validate a specific change.
+superspecs validate add-retry-logic
+
+# List in-flight changes, archived changes, and capabilities.
+superspecs list
+
+# Show the most-recent change and task counts.
+superspecs status
+
+# Archive an approved change: apply ADDED/MODIFIED/REMOVED deltas
+# to openspec/specs/, move the change folder under
+# openspec/changes/archive/YYYY-MM-DD-<id>/, and commit.
+superspecs archive add-retry-logic
+```
+
+### Error format
+
+Errors come out as `file:line:col: SDD<NNN> <message>` — the same
+format `tsc`, `eslint`, and `ruff` use, so IDEs make them clickable.
+The full code registry lives in [`schemas/README.md`](./schemas/README.md).
+
+### Build from source
+
+```bash
+git clone https://github.com/vikram8459/SuperSpecs.git
+cd SuperSpecs
+npm install
+npm run build
+npm test
+node dist/superspecs.js --help
+```
+
+Requires Node.js 20 LTS or newer (see [ADR-005](./docs/architecture.md#adr-005--cli-runtime-nodejs-20x-lts--typescript)).
 
 ## Installation (Cursor)
 
