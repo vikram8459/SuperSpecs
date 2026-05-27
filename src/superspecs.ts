@@ -28,9 +28,9 @@ program
 program
   .command('validate [change-id]')
   .description('validate proposal/spec-delta/tasks against schemas')
-  .action(() => {
-    process.stderr.write('validate: not yet implemented (lands in Task 9)\n');
-    process.exit(2);
+  .action(async (changeId?: string) => {
+    const { runValidate } = await import('./commands/validate.js');
+    process.exit(runValidate(process.cwd(), changeId));
   });
 
 program

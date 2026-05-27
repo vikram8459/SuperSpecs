@@ -1,4 +1,4 @@
-import { parseMarkdown, flattenPhrasing, type ParserError } from './shared.js';
+import { parseMarkdown, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
 import type { List, ListItem, Paragraph } from 'mdast';
 
 export interface TaskAst {
@@ -12,6 +12,15 @@ export interface TasksAst {
 }
 
 /**
+ * Parallel to TasksAst.tasks. Tasks ast is what the schema validates;
+ * positions are kept on the side so the validator can map ajv errors
+ * back to source positions without bloating the AST or the schema.
+ */
+export interface TasksPositions {
+  tasks: Position[];
+}
+
+/**
  * Strip a leading `**N. ` and trailing `**` if present so the task name
  * extracted from `- [ ] **3. Implement init**` becomes `Implement init`.
  */
@@ -22,9 +31,13 @@ function cleanTaskName(raw: string): string {
   return s.trim();
 }
 
-export function parseTasks(text: string, _file: string): { ast: TasksAst; errors: ParserError[] } {
+export function parseTasks(
+  text: string,
+  _file: string,
+): { ast: TasksAst; positions: TasksPositions; errors: ParserError[] } {
   const root = parseMarkdown(text);
   const tasks: TaskAst[] = [];
+  const positions: Position[] = [];
 
   for (const node of root.children) {
     if (node.type !== 'list') continue;
@@ -39,6 +52,8 @@ export function parseTasks(text: string, _file: string): { ast: TasksAst; errors
       if (!name) continue;
 
       const task: TaskAst = { name, specRefs: [], files: [] };
+      const itemPos = pos(item);
+      let sawSpecOrFiles = false;
 
       const nested = item.children.find((c) => c.type === 'list') as List | undefined;
       if (nested) {
@@ -50,8 +65,12 @@ export function parseTasks(text: string, _file: string): { ast: TasksAst; errors
           const specMatch = line.match(/^\s*Spec:\s*(.+)$/i);
           const filesMatch = line.match(/^\s*Files?:\s*(.+)$/i);
 
-          if (specMatch) task.specRefs.push(specMatch[1].trim());
+          if (specMatch) {
+            task.specRefs.push(specMatch[1].trim());
+            sawSpecOrFiles = true;
+          }
           if (filesMatch) {
+            sawSpecOrFiles = true;
             const parts = filesMatch[1]
               .split(',')
               .map((s) => s.trim().replace(/^`+|`+$/g, ''))
@@ -61,13 +80,16 @@ export function parseTasks(text: string, _file: string): { ast: TasksAst; errors
         }
       }
 
-      // Only treat this as a real task if it had at least one Spec: or Files: line,
-      // OR explicit checkbox marker. Otherwise it's just a sibling bullet, not a task.
-      if (task.specRefs.length > 0 || task.files.length > 0) {
+      // Only treat this as a real task if it had at least one Spec: or Files: line.
+      // Otherwise it's just a sibling bullet, not a task. Tasks missing one but
+      // not the other still need to surface as schema violations, hence the
+      // sawSpecOrFiles flag (vs. simply checking task.specRefs.length).
+      if (sawSpecOrFiles) {
         tasks.push(task);
+        positions.push(itemPos);
       }
     }
   }
 
-  return { ast: { tasks }, errors: [] };
+  return { ast: { tasks }, positions: { tasks: positions }, errors: [] };
 }
