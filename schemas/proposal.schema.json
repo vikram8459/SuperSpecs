@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/vikram8459/SuperSpecs/blob/main/schemas/proposal.schema.json",
+  "title": "OpenSpec Proposal AST",
+  "description": "Parsed AST of an openspec/changes/<id>/proposal.md file. Error code prefix: SDD100-SDD199.",
+  "type": "object",
+  "required": ["title", "sections"],
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The top-level # <Title> heading text. Empty → SDD103."
+    },
+    "sections": {
+      "type": "object",
+      "required": ["why", "whatChanges", "outOfScope", "impact"],
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Body of the ## Why section. Empty/missing → SDD100."
+        },
+        "whatChanges": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Bullets under ## What Changes. Empty → SDD101."
+        },
+        "outOfScope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets under ## Out of Scope. May be empty."
+        },
+        "impact": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Body of the ## Impact section. Empty/missing → SDD102."
+        }
+      }
+    }
+  }
+}
