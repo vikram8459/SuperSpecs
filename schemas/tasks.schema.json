@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/vikram8459/SuperSpecs/blob/main/schemas/tasks.schema.json",
+  "title": "OpenSpec Tasks AST",
+  "description": "Parsed AST of an openspec/changes/<id>/tasks.md file. Error code prefix: SDD010-SDD019.",
+  "type": "object",
+  "required": ["tasks"],
+  "additionalProperties": false,
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Task" },
+      "minItems": 1,
+      "description": "At least one task. Empty → SDD012."
+    }
+  },
+  "definitions": {
+    "Task": {
+      "type": "object",
+      "required": ["name", "specRefs", "files"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Task title from the `- [ ] **N. <name>**` bullet."
+        },
+        "specRefs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Spec delta reference(s) parsed from `Spec:` sub-bullets. Empty → SDD010."
+        },
+        "files": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Files touched, parsed from `Files:` sub-bullet. Empty → SDD011."
+        }
+      }
+    }
+  }
+}
