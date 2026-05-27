@@ -36,17 +36,17 @@ program
 program
   .command('list')
   .description('list in-flight changes, archived changes, and capabilities')
-  .action(() => {
-    process.stderr.write('list: not yet implemented (lands in Task 10)\n');
-    process.exit(2);
+  .action(async () => {
+    const { runList } = await import('./commands/list.js');
+    process.exit(runList(process.cwd()));
   });
 
 program
   .command('status')
   .description('print the most recent in-flight change and task counts')
-  .action(() => {
-    process.stderr.write('status: not yet implemented (lands in Task 10)\n');
-    process.exit(2);
+  .action(async () => {
+    const { runStatus } = await import('./commands/status.js');
+    process.exit(runStatus(process.cwd()));
   });
 
 program
