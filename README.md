@@ -104,11 +104,9 @@ superspecs status
 # to openspec/specs/, move the change folder under
 # openspec/changes/archive/YYYY-MM-DD-<id>/, and commit.
 #
-# WARNING: Phase B1 ships the mechanical archive path only.
-# No --dry-run, no --undo, no snapshot, no active-spec validation.
-# An incorrect delta will silently corrupt openspec/specs/.
-# Recover with `git revert` if needed. Safety mechanisms land in
-# Phase E (Finding 13 in the audit).
+# Note: v0.1.0 ships the archive command without --dry-run, --undo,
+# or active-spec validation. Review the proposed deltas before running
+# and recover with `git revert` if needed.
 superspecs archive add-retry-logic
 ```
 

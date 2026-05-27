@@ -13,7 +13,7 @@ references.
 | `spec-delta.schema.json` | `openspec/changes/<id>/specs/<cap>/spec.md` | SDD001–SDD099 |
 | `tasks.schema.json` | `openspec/changes/<id>/tasks.md` | SDD010–SDD019 |
 
-## Error code registry (Phase B1)
+## Error code registry
 
 | Code | Schema | Meaning |
 |------|--------|---------|
@@ -54,9 +54,9 @@ the schema with `$schema`:
 }
 ```
 
-## Expected `tasks.md` format (Phase B1)
+## Expected `tasks.md` format
 
-The Phase B1 parser recognises one task format:
+The current parser recognises one task format:
 
 ```markdown
 - [ ] **<N>. <Task name>**
@@ -66,13 +66,10 @@ The Phase B1 parser recognises one task format:
 
 The `Spec:` and `Files:` sub-bullets must use inline comma-separated
 values (not nested bullets). Variants like `- Create: <path>` and
-`- Modify: <path>` are NOT recognised by the parser today; tasks
-authored that way will report SDD010 / SDD011.
-
-Widening the parser to accept richer markup is tracked as a
-follow-up (Phase B2 / Phase E carry-forward; see TODO.md). Until
-then, prefer the strict format for tasks.md files you want
-`superspecs validate` to accept.
+`- Modify: <path>` are NOT recognised today; tasks authored that
+way will report SDD010 / SDD011. Widening the parser to accept
+richer markup is on the roadmap. Until then, prefer the strict
+format for tasks.md files you want `superspecs validate` to accept.
 
 ## Schema-version policy
 
