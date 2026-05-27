@@ -52,9 +52,9 @@ program
 program
   .command('archive <change-id>')
   .description('apply spec deltas to active spec set and archive the change')
-  .action(() => {
-    process.stderr.write('archive: not yet implemented (lands in Task 11)\n');
-    process.exit(2);
+  .action(async (changeId: string) => {
+    const { runArchive } = await import('./commands/archive.js');
+    process.exit(runArchive(process.cwd(), changeId));
   });
 
 await program.parseAsync(process.argv);
