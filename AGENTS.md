@@ -53,6 +53,8 @@ field, filenames, code blocks, and verbatim slug quotes. See
   dialogue; outputs `openspec/changes/<change-id>/design-notes.md`.
 - `spx:openspec-propose` — formalize the design into a change
   folder (proposal, spec deltas, design, tasks).
+- `spx:openspec-validate` — run `superspecs validate` against an
+  in-flight change and fix every reported error before handoff.
 - `spx:writing-plans` — expand `tasks.md` into bite-sized steps;
   each step is tied to the spec delta and scenarios it closes.
 - `spx:openspec-apply` — drive each task: spec → verify → commit.

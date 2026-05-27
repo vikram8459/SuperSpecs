@@ -46,6 +46,7 @@ same instructions on session start.
 |------------------|-----------------------------------|
 | `/brainstorm`    | `spx:brainstorming`        |
 | `/propose`       | `spx:openspec-propose`     |
+| `/validate`      | `spx:openspec-validate`    |
 | `/write-plan`    | `spx:writing-plans`        |
 | `/execute-plan`  | `spx:openspec-apply` (+ dispatch model) |
 | `/archive`       | `spx:openspec-archive`     |
