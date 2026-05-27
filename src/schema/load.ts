@@ -1,10 +1,12 @@
 import * as AjvNs from 'ajv';
 import type { ValidateFunction } from 'ajv';
 
-// ajv ships as CommonJS without an `exports` map; under
-// `module: nodenext` the namespace is what you get. The constructor
-// is on `.default` (esm/cjs interop quirk). Cast through unknown to
-// keep strict mode happy.
+// ajv (8.x) ships as CommonJS without an `exports` map; under
+// `module: nodenext` the namespace object is what `import * as`
+// yields, and the constructor is on `.default`. Cast through
+// `unknown` to keep strict mode happy. Revisit if ajv adopts an
+// ESM-native publish (see ajv-validator/ajv#1872) or we switch to
+// ajv-formats / a different validator.
 const AjvCtor = (AjvNs as unknown as {
   default: new (opts?: Record<string, unknown>) => {
     compile: (schema: unknown) => ValidateFunction;

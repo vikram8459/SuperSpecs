@@ -51,7 +51,9 @@ program
 
 program
   .command('archive <change-id>')
-  .description('apply spec deltas to active spec set and archive the change')
+  .description(
+    'apply spec deltas to active spec set and archive the change (Phase B1: NO --dry-run/--undo/snapshot — see Phase E / Finding 13)',
+  )
   .action(async (changeId: string) => {
     const { runArchive } = await import('./commands/archive.js');
     process.exit(runArchive(process.cwd(), changeId));

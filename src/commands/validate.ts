@@ -74,6 +74,15 @@ function validateChange(repoRoot: string, changeId: string): CliError[] {
   const errors: CliError[] = [];
 
   // proposal.md
+  //
+  // NOTE (Phase E carry-forward): proposal errors currently use a
+  // (1, 1) fallback position. parseTasks already exposes a `positions`
+  // side-channel and parseSpecDelta embeds positions on each AST node.
+  // Mirroring either approach for parseProposal would let us point to
+  // the offending section heading rather than the file start. Tracked
+  // as a Phase E refinement; SDD100 (missing Why), SDD101 (empty What
+  // Changes), SDD102 (missing Impact), and SDD103 (empty title) all
+  // benefit.
   const proposalPath = join(changeDir, 'proposal.md');
   if (existsSync(proposalPath)) {
     const text = readFileSync(proposalPath, 'utf8');

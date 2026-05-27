@@ -54,6 +54,26 @@ the schema with `$schema`:
 }
 ```
 
+## Expected `tasks.md` format (Phase B1)
+
+The Phase B1 parser recognises one task format:
+
+```markdown
+- [ ] **<N>. <Task name>**
+  - Spec: ADDED/MODIFIED/REMOVED `<Requirement>` in `<capability>`
+  - Files: path/to/a.ts, path/to/b.ts
+```
+
+The `Spec:` and `Files:` sub-bullets must use inline comma-separated
+values (not nested bullets). Variants like `- Create: <path>` and
+`- Modify: <path>` are NOT recognised by the parser today; tasks
+authored that way will report SDD010 / SDD011.
+
+Widening the parser to accept richer markup is tracked as a
+follow-up (Phase B2 / Phase E carry-forward; see TODO.md). Until
+then, prefer the strict format for tasks.md files you want
+`superspecs validate` to accept.
+
 ## Schema-version policy
 
 The schemas are versioned as a set with the `superspecs` package.

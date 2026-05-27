@@ -97,6 +97,22 @@ function applyDeltaToCapability(activePath: string, ast: SpecDeltaAst): void {
   writeFileSync(activePath, body, 'utf8');
 }
 
+/**
+ * Phase B1 ships the mechanical archive path only. `--dry-run`,
+ * `--undo`, snapshot creation, and active-spec validation are
+ * deferred to Phase E (Finding 13). Until those land, a mistake
+ * during archive can silently corrupt the active spec set with no
+ * recovery path beyond `git revert`. The WARN below is emitted on
+ * every run so users always see the limitation before the
+ * irreversible step proceeds.
+ */
+const PHASE_B1_SAFETY_WARN =
+  'archive: WARN — Phase B1 ships the mechanical archive path only.\n' +
+  '  No --dry-run, no --undo, no snapshot, no active-spec validation.\n' +
+  '  An incorrect delta will silently corrupt openspec/specs/.\n' +
+  '  Recover with `git revert` if needed.\n' +
+  '  Safety mechanisms land in Phase E (Finding 13).\n';
+
 export function runArchive(cwd: string, changeId: string): number {
   const repoRoot = resolve(cwd);
 
@@ -106,6 +122,8 @@ export function runArchive(cwd: string, changeId: string): number {
     );
     return 1;
   }
+
+  process.stderr.write(PHASE_B1_SAFETY_WARN);
 
   const changeDir = join(repoRoot, 'openspec', 'changes', changeId);
   if (!existsSync(changeDir)) {
