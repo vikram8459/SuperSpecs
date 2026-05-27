@@ -1,0 +1,9 @@
+{
+  "tasks": [
+    {
+      "name": "Scaffold Node + TS project",
+      "specRefs": ["ADDED Runtime and Entry Point in cli"],
+      "files": ["package.json", "tsconfig.json"]
+    }
+  ]
+}

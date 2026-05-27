@@ -1,0 +1,9 @@
+{
+  "title": "Phase B1 CLI and Schema",
+  "sections": {
+    "why": "We need a CLI to enforce the Iron Laws mechanically.",
+    "whatChanges": ["Add bin/superspecs", "Add schemas/"],
+    "outOfScope": ["Telemetry"],
+    "impact": "Two new capabilities: cli, schemas."
+  }
+}

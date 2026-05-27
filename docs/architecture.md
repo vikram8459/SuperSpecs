@@ -46,6 +46,7 @@ same instructions on session start.
 |------------------|-----------------------------------|
 | `/brainstorm`    | `spx:brainstorming`        |
 | `/propose`       | `spx:openspec-propose`     |
+| `/validate`      | `spx:openspec-validate`    |
 | `/write-plan`    | `spx:writing-plans`        |
 | `/execute-plan`  | `spx:openspec-apply` (+ dispatch model) |
 | `/archive`       | `spx:openspec-archive`     |
@@ -151,3 +152,40 @@ strings.
 - The local script works for forks without script edits.
 - A non-GitHub remote produces a clear warning instead of a silent
   wrong URL.
+
+### ADR-005 — CLI runtime: Node 20.x LTS + TypeScript
+
+**Date:** 2026-05-27 · **Status:** Accepted
+
+#### Decision
+
+The `superspecs` CLI is implemented in TypeScript (target es2022,
+module nodenext, strict mode) targeting Node.js 20.x LTS. Built
+output lives in `dist/`. Entry point at `bin/superspecs` resolves
+to `dist/superspecs.js`. Dependencies: `commander`, `ajv`,
+`ajv-errors`, `better-ajv-errors`, `gray-matter`, `fast-glob`,
+`remark`, `remark-parse`, `unist-util-visit`. Dev deps: `typescript`,
+`vitest`, `tsx`, `@types/node`, `json-schema-to-typescript`.
+
+#### Consequences
+
+- Contributors need Node 20.x on `PATH` to run `npm install`,
+  `npm run build`, `npm test`.
+- Mirrors OpenSpec's `bin/`, `src/`, `schemas/`, `vitest.config.ts`
+  layout, so patterns transfer 1:1.
+- `npm publish` as `@superspecs/cli` (Finding 1.7) is one
+  command. Package name fallback `superspecs-cli` if scoped name
+  unavailable (decision recorded in ADR-007 if needed).
+- TypeScript types are co-generated from the JSON Schemas via
+  `json-schema-to-typescript` (see ADR-006), giving compile-time
+  alignment between schemas and parser ASTs.
+
+#### Alternatives Considered
+
+- Node + plain JS — rejected for type-safety on a validator
+  codebase. Build step is cheap; type guarantees are not.
+- Python 3.12 — rejected for OpenSpec parity and Windows install
+  friction (existing hook stack is PowerShell; Python would add a
+  third runtime).
+- PowerShell — rejected: no serious JSON Schema story; not a
+  publishable CLI language.

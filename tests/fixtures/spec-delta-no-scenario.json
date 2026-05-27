@@ -1,0 +1,14 @@
+{
+  "capability": "cli",
+  "deltas": {
+    "added": [
+      {
+        "name": "Empty Requirement",
+        "body": "Body text here.",
+        "scenarios": []
+      }
+    ],
+    "modified": [],
+    "removed": []
+  }
+}

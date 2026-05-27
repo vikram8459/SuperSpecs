@@ -1,0 +1,21 @@
+{
+  "capability": "cli",
+  "deltas": {
+    "added": [
+      {
+        "name": "Bad Scenario",
+        "body": "Body.",
+        "scenarios": [
+          {
+            "name": "missing then",
+            "given": "g",
+            "when": "w",
+            "then": ""
+          }
+        ]
+      }
+    ],
+    "modified": [],
+    "removed": []
+  }
+}

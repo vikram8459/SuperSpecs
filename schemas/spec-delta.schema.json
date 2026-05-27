@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/vikram8459/SuperSpecs/blob/main/schemas/spec-delta.schema.json",
+  "title": "OpenSpec Spec-Delta AST",
+  "description": "Parsed AST of an openspec/changes/<id>/specs/<cap>/spec.md file. Error code prefix: SDD001-SDD099.",
+  "type": "object",
+  "required": ["capability", "deltas"],
+  "additionalProperties": false,
+  "properties": {
+    "capability": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The capability name from the # <cap> — delta for <id> heading."
+    },
+    "deltas": {
+      "type": "object",
+      "required": ["added", "modified", "removed"],
+      "additionalProperties": false,
+      "properties": {
+        "added": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Requirement" }
+        },
+        "modified": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Requirement" }
+        },
+        "removed": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Requirement" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Requirement": {
+      "type": "object",
+      "required": ["name", "body", "scenarios"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The text after ### Requirement: in the source markdown."
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Normative statement (SHALL/MUST) for the requirement."
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/Scenario" },
+          "description": "Every requirement requires >=1 scenario. Empty → SDD001."
+        }
+      }
+    },
+    "Scenario": {
+      "type": "object",
+      "required": ["name", "given", "when", "then"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The text after #### Scenario: in the source markdown."
+        },
+        "given": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GIVEN clause body. Empty → SDD003."
+        },
+        "when": {
+          "type": "string",
+          "minLength": 1,
+          "description": "WHEN clause body. Empty → SDD004."
+        },
+        "then": {
+          "type": "string",
+          "minLength": 1,
+          "description": "THEN clause body. Empty → SDD002."
+        }
+      }
+    }
+  }
+}
