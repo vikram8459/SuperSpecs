@@ -1,0 +1,21 @@
+{
+  "capability": "cli",
+  "deltas": {
+    "added": [
+      {
+        "name": "Version flag",
+        "body": "The CLI SHALL print its version when invoked with --version.",
+        "scenarios": [
+          {
+            "name": "prints version",
+            "given": "the package is built and installed",
+            "when": "the user runs `superspecs --version`",
+            "then": "stdout contains the package.json version and exit 0"
+          }
+        ]
+      }
+    ],
+    "modified": [],
+    "removed": []
+  }
+}
