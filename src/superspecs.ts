@@ -20,9 +20,9 @@ program
   .command('init')
   .description('initialize openspec/ folder layout in the current directory')
   .option('-f, --force', 'overwrite non-empty content')
-  .action(() => {
-    process.stderr.write('init: not yet implemented (lands in Task 3)\n');
-    process.exit(2);
+  .action(async (opts: { force?: boolean }) => {
+    const { runInit } = await import('./commands/init.js');
+    process.exit(runInit(process.cwd(), opts));
   });
 
 program
