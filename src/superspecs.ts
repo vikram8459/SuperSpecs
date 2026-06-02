@@ -67,4 +67,12 @@ program
     process.exit(runDoctor());
   });
 
+program
+  .command('eval [glob]')
+  .description('run skill evals (replay recorded transcripts; default tests/skills/**/*.eval.json)')
+  .action(async (glob?: string) => {
+    const { runEval } = await import('./commands/eval.js');
+    process.exit(await runEval(process.cwd(), glob));
+  });
+
 await program.parseAsync(process.argv);

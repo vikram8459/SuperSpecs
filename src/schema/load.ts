@@ -48,4 +48,5 @@ export const validators = {
   proposal: load('proposal.schema.json'),
   specDelta: load('spec-delta.schema.json'),
   tasks: load('tasks.schema.json'),
+  skillEval: load('skill-eval.schema.json'),
 };
