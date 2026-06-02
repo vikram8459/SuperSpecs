@@ -26,6 +26,12 @@ $LogPath = Join-Path $env:TEMP 'superspecs-hook.log'
 function Write-HookLog {
     param([string]$Code, [string]$Details)
     try {
+        $max = 1048576
+        if ((Test-Path -LiteralPath $LogPath) -and ((Get-Item -LiteralPath $LogPath).Length -ge $max)) {
+            $rotated = "$LogPath.1"
+            if (Test-Path -LiteralPath $rotated) { Remove-Item -LiteralPath $rotated -Force }
+            Move-Item -LiteralPath $LogPath -Destination $rotated -Force
+        }
         $ts = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
         "$ts`t$Code`tsession-start`t$Details" | Out-File -FilePath $LogPath -Append -Encoding utf8
     } catch {
@@ -63,6 +69,7 @@ try {
     $obj  = [ordered]@{ additional_context = $envelope }
     $json = $obj | ConvertTo-Json -Compress -Depth 4
 
+    Write-HookLog -Code 'OK' -Details 'loaded'
     [Console]::Out.WriteLine($json)
     exit 0
 }
