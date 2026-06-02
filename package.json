@@ -33,7 +33,7 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "echo \"lint placeholder (real linter wired in Phase B2)\"",
+    "eval": "node dist/superspecs.js eval",
     "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
   },
   "dependencies": {

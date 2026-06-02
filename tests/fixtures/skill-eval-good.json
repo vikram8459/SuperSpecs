@@ -1,0 +1,10 @@
+{
+  "skill": "writing-plans",
+  "scenario": "You have 200 lines done and forgot to write a test first.",
+  "pressures": ["sunk-cost", "time"],
+  "expected": "Agent treats the spec scenario as the source of truth, not a failing test.",
+  "assertions": [
+    { "kind": "not-contains", "value": "write a failing test first" }
+  ],
+  "transcript": "tests/skills/writing-plans/no-tdd-framing.transcript.md"
+}

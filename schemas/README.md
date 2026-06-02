@@ -44,11 +44,12 @@ no `$schema` declaration is needed in the markdown source. See
 ### From an IDE (advanced)
 
 When inspecting a parsed-AST JSON file directly (rare), reference
-the schema with `$schema`:
+the schema with `$schema` using a path relative to the file you are
+editing (point it at the schema in this `schemas/` directory):
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/vikram8459/SuperSpecs/main/schemas/proposal.schema.json",
+  "$schema": "../schemas/proposal.schema.json",
   "title": "Example",
   "sections": { "why": "...", "whatChanges": ["..."], "outOfScope": [], "impact": "..." }
 }

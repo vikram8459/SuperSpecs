@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SuperSpecs Skill Eval",
+  "description": "A behavioural eval for a skill. Error code prefix: SDD300-SDD399.",
+  "type": "object",
+  "required": ["skill", "scenario", "expected", "assertions"],
+  "additionalProperties": false,
+  "properties": {
+    "skill": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skill slug under test (e.g. writing-plans)."
+    },
+    "scenario": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The pressure scenario presented to the agent."
+    },
+    "pressures": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Pressure tags (time, sunk-cost, authority, ...)."
+    },
+    "expected": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What a compliant agent does."
+    },
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "description": "At least one assertion. Empty -> SDD300.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "enum": ["contains", "not-contains", "matches"] },
+          "value": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "transcript": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repo-relative path to a recorded transcript."
+    }
+  }
+}
