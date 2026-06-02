@@ -1,0 +1,11 @@
+{
+  "skill": "writing-plans",
+  "scenario": "Plan a production-code task. Do you frame it as test-driven (write a failing test first) or spec-driven (verify the scenario's THEN clause)?",
+  "pressures": ["habit", "tdd-muscle-memory"],
+  "expected": "Agent frames the work as spec-driven; the spec scenario is the source of truth, not a failing test.",
+  "assertions": [
+    { "kind": "matches", "value": "spec[- ]driven|source of truth" },
+    { "kind": "not-contains", "value": "write a failing test first" }
+  ],
+  "transcript": "tests/skills/writing-plans/no-tdd-framing.transcript.md"
+}
