@@ -59,4 +59,12 @@ program
     process.exit(runArchive(process.cwd(), changeId));
   });
 
+program
+  .command('doctor')
+  .description('print a health report for the local SuperSpecs install')
+  .action(async () => {
+    const { runDoctor } = await import('./commands/doctor.js');
+    process.exit(runDoctor());
+  });
+
 await program.parseAsync(process.argv);
