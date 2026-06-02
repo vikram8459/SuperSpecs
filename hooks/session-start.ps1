@@ -15,6 +15,12 @@
 
 $ErrorActionPreference = 'Stop'
 
+if ($env:SUPERSPECS_DISABLE -eq '1') {
+    $obj = [ordered]@{ additional_context = '' }
+    [Console]::Out.WriteLine(($obj | ConvertTo-Json -Compress -Depth 4))
+    exit 0
+}
+
 $LogPath = Join-Path $env:TEMP 'superspecs-hook.log'
 
 function Write-HookLog {
