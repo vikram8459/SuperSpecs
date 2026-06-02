@@ -34,7 +34,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "node dist/superspecs.js eval",
-    "lint": "echo \"lint placeholder (real linter wired in Phase B2)\"",
     "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
   },
   "dependencies": {
