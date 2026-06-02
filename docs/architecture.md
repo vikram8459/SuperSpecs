@@ -51,8 +51,10 @@ same instructions on session start.
 | `/execute-plan`  | `spx:openspec-apply` (+ dispatch model) |
 | `/archive`       | `spx:openspec-archive`     |
 
-Current commands are 1–2-sentence wrappers. Finding 11 (Phase B) turns
-them into thin orchestrators over the planned CLI from Finding 1.
+Command files now carry a `**Usage:**` line documenting the argument
+shape and a `**Preflight:**` line reminding the agent to confirm the
+expected `openspec/` structure before acting. `/propose` additionally
+instructs running `superspecs init` when the workspace is missing.
 
 ## OpenSpec folder layout
 
@@ -77,10 +79,32 @@ openspec/
 - **`SUPERSPECS_MODE`** — `strict` | `auto` (default) | `manual`. Controls
   how aggressively skills self-trigger. Documented but not yet enforced
   at runtime. See `skills/using-superspecs/SKILL.md`.
-- **`SUPERSPECS_DISABLE`** — planned (Finding 8.1, Phase B). When set to
-  `1`, the SessionStart hook emits an empty envelope and exits 0.
+- **`SUPERSPECS_DISABLE`** — when set to `1`, both SessionStart hooks
+  emit `{"additional_context": ""}` and exit 0 without loading the
+  skill. Any other value (or unset) loads normally. The check runs
+  before any file I/O in both `session-start.ps1` and `session-start`.
 - **`SUPERSPECS_TELEMETRY`** — planned (Finding 8.3, Phase E). Opt-in;
   disabled by default and in CI.
+
+### Hook logging
+
+Both SessionStart hooks append tab-separated diagnostics
+(`timestamp \t code \t session-start \t details`) to
+`superspecs-hook.log` in the system temp directory, and rotate it to
+`superspecs-hook.log.1` once it reaches 1 MB. The POSIX hook
+(`session-start`) logs the same format as the PowerShell hook
+(`session-start.ps1`); logging is best-effort and never blocks the
+stdout envelope. Run `superspecs doctor` to see the last 20 lines
+plus a health report of the install.
+
+### `superspecs doctor`
+
+`superspecs doctor` prints a cross-platform health report: CLI
+version, presence of both hook scripts, the Cursor plugin manifest,
+and the three JSON schemas (these are required and affect the exit
+code), plus the hook-log tail and — on Windows only — the PowerShell
+version (informational; never affect the exit code). It exits
+non-zero when a required component is missing.
 
 ## Architecture Decision Records (ADRs)
 

@@ -3,8 +3,33 @@
 
 set -euo pipefail
 
+if [ "${SUPERSPECS_DISABLE:-}" = "1" ]; then
+  printf '{\n  "additional_context": ""\n}\n'
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+LOG_DIR="${TMPDIR:-/tmp}"
+LOG_PATH="${LOG_DIR%/}/superspecs-hook.log"
+
+write_hook_log() {
+  local code="$1" details="$2"
+  {
+    local max=1048576
+    if [ -f "$LOG_PATH" ]; then
+      local size
+      size=$(wc -c < "$LOG_PATH" 2>/dev/null || echo 0)
+      if [ "$size" -ge "$max" ]; then
+        mv -f "$LOG_PATH" "${LOG_PATH}.1" 2>/dev/null || true
+      fi
+    fi
+    local ts
+    ts=$(date +%Y-%m-%dT%H:%M:%S%z)
+    printf '%s\t%s\tsession-start\t%s\n' "$ts" "$code" "$details" >> "$LOG_PATH"
+  } 2>/dev/null || true
+}
 
 using_superspecs_content=$(cat "${PLUGIN_ROOT}/skills/using-superspecs/SKILL.md" 2>&1 || echo "Error reading using-superspecs skill")
 
@@ -21,6 +46,8 @@ escape_for_json() {
 using_superspecs_escaped=$(escape_for_json "$using_superspecs_content")
 
 session_context="<EXTREMELY_IMPORTANT>\nYou have SuperSpecs.\n\n**Below is the full content of your 'spx:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**\n\n${using_superspecs_escaped}\n</EXTREMELY_IMPORTANT>"
+
+write_hook_log "OK" "loaded"
 
 printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
 
