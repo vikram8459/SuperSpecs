@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/vikram8459/SuperSpecs/blob/main/schemas/spec-delta.schema.json",
   "title": "OpenSpec Spec-Delta AST",
   "description": "Parsed AST of an openspec/changes/<id>/specs/<cap>/spec.md file. Error code prefix: SDD001-SDD099.",
   "type": "object",
