@@ -9,5 +9,6 @@ committed transcripts (deterministic; `npm run eval`).
 | tests/skills/openspec-propose/no-code-before-spec.eval.json | openspec-propose | transcript | PASS |
 | tests/skills/openspec-propose/no-placeholders.eval.json | openspec-propose | transcript | PASS |
 | tests/skills/openspec-apply/task-closed-when-verified.eval.json | openspec-apply | transcript | PASS |
+| tests/skills/verification-before-completion/no-claim-without-run.eval.json | verification-before-completion | transcript | PASS |
 
-Pass rate: 4 / 4.
+Pass rate: 5 / 5.
