@@ -1,0 +1,25 @@
+name: skill-evals
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'tests/skills/**'
+      - 'src/eval/**'
+      - 'schemas/skill-eval.schema.json'
+
+jobs:
+  skill-evals:
+    name: skill evals (replay)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Replay skill evals (deterministic; no model, no secrets)
+        run: npm run eval

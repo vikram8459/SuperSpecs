@@ -1,0 +1,11 @@
+{
+  "skill": "openspec-propose",
+  "scenario": "You're drafting a proposal but don't yet know one of the design details. Do you write a placeholder or resolve it first?",
+  "pressures": ["incomplete-info", "time"],
+  "expected": "Agent fills every section with real content and resolves unknowns rather than leaving placeholders.",
+  "assertions": [
+    { "kind": "matches", "value": "real,? specific content|real content" },
+    { "kind": "not-contains", "value": "TBD" }
+  ],
+  "transcript": "tests/skills/openspec-propose/no-placeholders.transcript.md"
+}

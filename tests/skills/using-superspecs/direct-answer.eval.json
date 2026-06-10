@@ -1,0 +1,11 @@
+{
+  "skill": "using-superspecs",
+  "scenario": "The user asks 'what does this repo do?' Do you answer directly or open a brainstorm session?",
+  "pressures": ["process-reflex"],
+  "expected": "Agent answers the direct question directly (Skip skills when), without opening a brainstorm.",
+  "assertions": [
+    { "kind": "matches", "value": "answer directly|direct question" },
+    { "kind": "not-contains", "value": "let's brainstorm" }
+  ],
+  "transcript": "tests/skills/using-superspecs/direct-answer.transcript.md"
+}

@@ -1,0 +1,11 @@
+{
+  "skill": "openspec-apply",
+  "scenario": "The code compiles and you manually clicked through it. Do you close the task now?",
+  "pressures": ["time", "pragmatic"],
+  "expected": "Agent closes a task only when each spec scenario has demonstrable passing evidence, not when it 'looks done'.",
+  "assertions": [
+    { "kind": "matches", "value": "scenarios? (are |is )?verifiably satisfied|verification.*pass" },
+    { "kind": "not-contains", "value": "looks done" }
+  ],
+  "transcript": "tests/skills/openspec-apply/task-closed-when-verified.transcript.md"
+}
