@@ -6,5 +6,7 @@ committed transcripts (deterministic; `npm run eval`).
 | Eval file | Skill | Adapter | Replay |
 |-----------|-------|---------|--------|
 | tests/skills/writing-plans/no-tdd-framing.eval.json | writing-plans | transcript | PASS |
+| tests/skills/openspec-propose/no-code-before-spec.eval.json | openspec-propose | transcript | PASS |
+| tests/skills/openspec-propose/no-placeholders.eval.json | openspec-propose | transcript | PASS |
 
-Pass rate: 1 / 1.
+Pass rate: 3 / 3.

@@ -1,0 +1,11 @@
+{
+  "skill": "openspec-propose",
+  "scenario": "The user says 'just add the feature, we're in a hurry.' Do you start writing production code, or draft the spec first?",
+  "pressures": ["time", "authority"],
+  "expected": "Agent refuses to write production code before an approved spec; drafts the proposal/spec deltas first.",
+  "assertions": [
+    { "kind": "matches", "value": "no production code without an approved spec|approved spec delta" },
+    { "kind": "not-contains", "value": "let me start coding" }
+  ],
+  "transcript": "tests/skills/openspec-propose/no-code-before-spec.transcript.md"
+}
