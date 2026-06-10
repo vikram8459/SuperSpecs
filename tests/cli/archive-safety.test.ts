@@ -88,3 +88,45 @@ describe('archive snapshot before write', () => {
     expect(gi).toMatch(/openspec\/\.snapshots\//);
   });
 });
+
+describe('active spec validation', () => {
+  it('scenario: clean active set validates', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+    commitAll(dir, 'seed');
+    expect(run(dir, ['validate', '--active']).status).toBe(0);
+  });
+
+  it('scenario: duplicate requirement name fails active validation', () => {
+    const dir = initRepo();
+    mkdirSync(join(dir, 'openspec', 'specs', 'cli'), { recursive: true });
+    writeFileSync(
+      join(dir, 'openspec', 'specs', 'cli', 'spec.md'),
+      `# cli\n\n### Requirement: Dup\nb\n\n#### Scenario: s\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n\n### Requirement: Dup\nb2\n\n#### Scenario: s2\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n`,
+    );
+    const r = run(dir, ['validate', '--active']);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/duplicate requirement name "Dup"/);
+  });
+
+  it('scenario: archive refuses to corrupt the active set', () => {
+    const dir = initRepo();
+    mkdirSync(join(dir, 'openspec', 'specs', 'cli'), { recursive: true });
+    writeFileSync(
+      join(dir, 'openspec', 'specs', 'cli', 'spec.md'),
+      `# cli\n\n### Requirement: New Thing\nb\n\n#### Scenario: s\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n`,
+    );
+    const cdir = join(dir, 'openspec', 'changes', 'add-x', 'specs', 'cli');
+    mkdirSync(cdir, { recursive: true });
+    writeFileSync(
+      join(cdir, 'spec.md'),
+      `# cli — delta for add-x\n\n## ADDED Requirements\n\n### Requirement: New Thing\nb\n\n#### Scenario: s\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n`,
+    );
+    commitAll(dir, 'seed');
+    const before = readFileSync(join(dir, 'openspec', 'specs', 'cli', 'spec.md'), 'utf8');
+    const r = run(dir, ['archive', 'add-x']);
+    expect(r.status).not.toBe(0);
+    expect(readFileSync(join(dir, 'openspec', 'specs', 'cli', 'spec.md'), 'utf8')).toBe(before);
+    expect(existsSync(join(dir, 'openspec', 'changes', 'add-x'))).toBe(true);
+  });
+});

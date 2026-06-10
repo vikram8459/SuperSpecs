@@ -9,6 +9,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { gitAddAll, gitCommit, gitIsClean } from '../util/git.js';
 import { takeSnapshot } from '../util/snapshot.js';
+import { validateActiveContent } from './validate-active.js';
 import {
   parseSpecDelta,
   type RequirementAst,
@@ -171,6 +172,18 @@ export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions =
   }
 
   const plan = buildArchivePlan(repoRoot, changeId);
+
+  // Refuse to write if the resulting active set would be structurally
+  // invalid (duplicate requirement names, requirements with no scenario).
+  const planErrors = plan.changes.flatMap((c) => validateActiveContent(c.capability, c.after));
+  if (planErrors.length > 0) {
+    for (const e of planErrors) {
+      process.stderr.write(
+        `archive: would corrupt active set: ${e.capability}: ${e.code} ${e.message}\n`,
+      );
+    }
+    return 1;
+  }
 
   // Snapshot the current active spec set before any modification, so
   // `archive --undo` can restore it byte-for-byte.

@@ -7,6 +7,7 @@ import { parseSpecDelta, type SpecDeltaAst } from '../parser/spec-delta.js';
 import { parseTasks, type TasksAst, type TasksPositions } from '../parser/tasks.js';
 import { validators } from '../schema/load.js';
 import { ajvToCliErrors, formatError, type CliError } from '../schema/errors.js';
+import { validateActiveContent } from './validate-active.js';
 
 /**
  * Strip the parser's position metadata from a spec-delta AST so the
@@ -165,4 +166,23 @@ export function runValidate(cwd: string, changeId?: string): number {
     return 0;
   }
   return 1;
+}
+
+/** Validate the active spec set in openspec/specs/ against structural rules. */
+export function runValidateActive(cwd: string): number {
+  const repoRoot = resolve(cwd);
+  const files = fg.sync('openspec/specs/*/spec.md', { cwd: repoRoot, absolute: false });
+  let failed = false;
+  for (const rel of files) {
+    const capability = rel.split('/')[2];
+    const errs = validateActiveContent(capability, readFileSync(resolve(repoRoot, rel), 'utf8'));
+    for (const e of errs) {
+      failed = true;
+      process.stderr.write(`${rel}:${e.line}:${e.col}: ${e.code} ${e.message}\n`);
+    }
+  }
+  if (!failed) {
+    process.stdout.write(`Active spec set valid (${files.length} capabilities).\n`);
+  }
+  return failed ? 1 : 0;
 }

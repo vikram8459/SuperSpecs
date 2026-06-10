@@ -28,7 +28,12 @@ program
 program
   .command('validate [change-id]')
   .description('validate proposal/spec-delta/tasks against schemas')
-  .action(async (changeId?: string) => {
+  .option('--active', 'validate the active spec set in openspec/specs/')
+  .action(async (changeId: string | undefined, opts: { active?: boolean }) => {
+    if (opts.active) {
+      const { runValidateActive } = await import('./commands/validate.js');
+      process.exit(runValidateActive(process.cwd()));
+    }
     const { runValidate } = await import('./commands/validate.js');
     process.exit(runValidate(process.cwd(), changeId));
   });
