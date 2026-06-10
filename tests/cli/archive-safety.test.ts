@@ -130,3 +130,15 @@ describe('active spec validation', () => {
     expect(existsSync(join(dir, 'openspec', 'changes', 'add-x'))).toBe(true);
   });
 });
+
+describe('archive commit trailers', () => {
+  it('scenario: commit records archive-of and snapshot-at', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+    commitAll(dir, 'seed');
+    expect(run(dir, ['archive', 'add-x']).status).toBe(0);
+    const body = execFileSync('git', ['log', '-1', '--format=%B'], { cwd: dir, encoding: 'utf8' });
+    expect(body).toMatch(/Archive-Of: add-x/);
+    expect(body).toMatch(/Snapshot-At: openspec\/\.snapshots\/add-x/);
+  });
+});

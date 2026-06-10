@@ -197,9 +197,12 @@ export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions =
   const archivedDir = join(archiveBase, `${todayIso()}-${changeId}`);
   renameSync(changeDir, archivedDir);
 
-  // Stage everything and commit with the structured trailer.
+  // Stage everything and commit with the structured trailers.
   gitAddAll(repoRoot);
-  gitCommit(repoRoot, `archive: ${changeId}`, { 'Archive-Of': changeId });
+  gitCommit(repoRoot, `archive: ${changeId}`, {
+    'Archive-Of': changeId,
+    'Snapshot-At': `openspec/.snapshots/${changeId}`,
+  });
 
   process.stdout.write(`Archived ${changeId} -> ${archivedDir}\n`);
   return 0;
