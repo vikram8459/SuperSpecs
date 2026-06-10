@@ -21,6 +21,8 @@ function initRepo(): string {
   execFileSync('git', ['config', 'user.email', 't@e.com'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 'T'], { cwd: dir });
   cpSync(SCHEMAS, join(dir, 'schemas'), { recursive: true });
+  // Mirror the real repo: snapshots are local recovery state, gitignored.
+  writeFileSync(join(dir, '.gitignore'), 'openspec/.snapshots/\n');
   return dir;
 }
 
@@ -140,5 +142,41 @@ describe('archive commit trailers', () => {
     const body = execFileSync('git', ['log', '-1', '--format=%B'], { cwd: dir, encoding: 'utf8' });
     expect(body).toMatch(/Archive-Of: add-x/);
     expect(body).toMatch(/Snapshot-At: openspec\/\.snapshots\/add-x/);
+  });
+});
+
+describe('archive undo', () => {
+  it('scenario: undo restores the pre-archive state', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+    commitAll(dir, 'seed');
+    const before = readFileSync(join(dir, 'openspec', 'specs', 'cli', 'spec.md'), 'utf8');
+    expect(run(dir, ['archive', 'add-x']).status).toBe(0);
+    // archive already commits and leaves a clean tree, so undo can proceed.
+    const r = run(dir, ['archive', 'add-x', '--undo']);
+    expect(r.status).toBe(0);
+    expect(readFileSync(join(dir, 'openspec', 'specs', 'cli', 'spec.md'), 'utf8')).toBe(before);
+    expect(existsSync(join(dir, 'openspec', 'changes', 'add-x'))).toBe(true);
+  });
+
+  it('scenario: undo refuses on a dirty tree', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+    commitAll(dir, 'seed');
+    run(dir, ['archive', 'add-x']);
+    writeFileSync(join(dir, 'dirty.txt'), 'x\n'); // dirty (untracked) after a clean archive
+    const r = run(dir, ['archive', 'add-x', '--undo']);
+    expect(r.status).not.toBe(0);
+  });
+
+  it('scenario: undo refuses when snapshot is missing', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+    commitAll(dir, 'seed');
+    run(dir, ['archive', 'add-x']);
+    rmSync(join(dir, 'openspec', '.snapshots', 'add-x'), { recursive: true, force: true });
+    const r = run(dir, ['archive', 'add-x', '--undo']);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/snapshot not found/);
   });
 });

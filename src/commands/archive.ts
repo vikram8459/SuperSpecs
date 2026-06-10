@@ -1,14 +1,17 @@
 import fg from 'fast-glob';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { gitAddAll, gitCommit, gitIsClean } from '../util/git.js';
-import { takeSnapshot } from '../util/snapshot.js';
+import { takeSnapshot, snapshotDir } from '../util/snapshot.js';
 import { validateActiveContent } from './validate-active.js';
 import {
   parseSpecDelta,
@@ -143,8 +146,45 @@ export interface ArchiveOptions {
   undo?: boolean;
 }
 
+function runUndo(repoRoot: string, changeId: string): number {
+  if (!gitIsClean(repoRoot)) {
+    process.stderr.write(
+      'archive --undo: working tree is dirty. Commit or stash your changes first.\n',
+    );
+    return 1;
+  }
+  const snap = snapshotDir(repoRoot, changeId);
+  if (!existsSync(snap)) {
+    process.stderr.write(
+      `archive --undo: snapshot not found: openspec/.snapshots/${changeId}\n`,
+    );
+    return 1;
+  }
+
+  // Restore openspec/specs/ from the snapshot, byte-for-byte.
+  const specs = join(repoRoot, 'openspec', 'specs');
+  if (existsSync(specs)) rmSync(specs, { recursive: true, force: true });
+  cpSync(snap, specs, { recursive: true });
+
+  // Move the archived folder back to changes/<id>/ (find the dated dir).
+  const archiveBase = join(repoRoot, 'openspec', 'changes', 'archive');
+  const match = existsSync(archiveBase)
+    ? readdirSync(archiveBase).find((n) => n.endsWith(`-${changeId}`))
+    : undefined;
+  if (match) {
+    renameSync(join(archiveBase, match), join(repoRoot, 'openspec', 'changes', changeId));
+  }
+
+  process.stdout.write(
+    `Undid archive of ${changeId}; restored openspec/specs/ from snapshot.\n`,
+  );
+  return 0;
+}
+
 export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions = {}): number {
   const repoRoot = resolve(cwd);
+
+  if (opts.undo) return runUndo(repoRoot, changeId);
 
   const changeDir = join(repoRoot, 'openspec', 'changes', changeId);
 
