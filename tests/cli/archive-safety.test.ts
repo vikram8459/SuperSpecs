@@ -69,3 +69,22 @@ describe('archive dry-run', () => {
     expect(log).not.toMatch(/archive: add-x/);
   });
 });
+
+describe('archive snapshot before write', () => {
+  it('scenario: snapshot captured before modification', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+    commitAll(dir, 'seed');
+    const before = readFileSync(join(dir, 'openspec', 'specs', 'cli', 'spec.md'), 'utf8');
+    const r = run(dir, ['archive', 'add-x']);
+    expect(r.status).toBe(0);
+    const snap = join(dir, 'openspec', '.snapshots', 'add-x', 'cli', 'spec.md');
+    expect(existsSync(snap)).toBe(true);
+    expect(readFileSync(snap, 'utf8')).toBe(before);
+  });
+
+  it('scenario: snapshots directory is gitignored', () => {
+    const gi = readFileSync(resolve('.gitignore'), 'utf8');
+    expect(gi).toMatch(/openspec\/\.snapshots\//);
+  });
+});

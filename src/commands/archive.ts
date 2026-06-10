@@ -8,6 +8,7 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { gitAddAll, gitCommit, gitIsClean } from '../util/git.js';
+import { takeSnapshot } from '../util/snapshot.js';
 import {
   parseSpecDelta,
   type RequirementAst,
@@ -170,6 +171,11 @@ export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions =
   }
 
   const plan = buildArchivePlan(repoRoot, changeId);
+
+  // Snapshot the current active spec set before any modification, so
+  // `archive --undo` can restore it byte-for-byte.
+  takeSnapshot(repoRoot, changeId);
+
   writePlan(plan);
 
   // Move the change folder under archive/<YYYY-MM-DD>-<change-id>/.
