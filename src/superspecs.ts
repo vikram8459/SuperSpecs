@@ -28,7 +28,12 @@ program
 program
   .command('validate [change-id]')
   .description('validate proposal/spec-delta/tasks against schemas')
-  .action(async (changeId?: string) => {
+  .option('--active', 'validate the active spec set in openspec/specs/')
+  .action(async (changeId: string | undefined, opts: { active?: boolean }) => {
+    if (opts.active) {
+      const { runValidateActive } = await import('./commands/validate.js');
+      process.exit(runValidateActive(process.cwd()));
+    }
     const { runValidate } = await import('./commands/validate.js');
     process.exit(runValidate(process.cwd(), changeId));
   });
@@ -51,12 +56,12 @@ program
 
 program
   .command('archive <change-id>')
-  .description(
-    'apply spec deltas to active spec set and archive the change (v0.1.0: no --dry-run/--undo; review deltas first)',
-  )
-  .action(async (changeId: string) => {
+  .description('apply spec deltas to the active spec set and archive the change')
+  .option('--dry-run', 'preview the changes without writing, moving, or committing')
+  .option('--undo', 'restore the active spec set from the change snapshot and un-archive')
+  .action(async (changeId: string, opts: { dryRun?: boolean; undo?: boolean }) => {
     const { runArchive } = await import('./commands/archive.js');
-    process.exit(runArchive(process.cwd(), changeId));
+    process.exit(runArchive(process.cwd(), changeId, opts));
   });
 
 program

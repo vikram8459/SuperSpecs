@@ -1,13 +1,18 @@
 import fg from 'fast-glob';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { gitAddAll, gitCommit, gitIsClean } from '../util/git.js';
+import { takeSnapshot, snapshotDir } from '../util/snapshot.js';
+import { validateActiveContent } from './validate-active.js';
 import {
   parseSpecDelta,
   type RequirementAst,
@@ -59,60 +64,140 @@ function findRequirementBlock(
   return null;
 }
 
-function applyDeltaToCapability(activePath: string, ast: SpecDeltaAst): void {
-  const capability = ast.capability;
+export interface CapabilityChange {
+  capability: string;
+  activePath: string;
+  before: string;
+  after: string;
+  added: string[];
+  modified: string[];
+  removed: string[];
+}
+
+export interface ArchivePlan {
+  changeId: string;
+  changes: CapabilityChange[];
+}
+
+/** Pure: compute the resulting active content for one capability (no write). */
+function computeCapabilityAfter(activePath: string, ast: SpecDeltaAst): string {
   let body = existsSync(activePath)
     ? readFileSync(activePath, 'utf8')
-    : `# ${capability}\n`;
+    : `# ${ast.capability}\n`;
 
-  // MODIFIED: replace existing block with the new one.
   for (const req of ast.deltas.modified) {
     const range = findRequirementBlock(body, req.name);
     const rendered = renderRequirement(req);
-    if (range) {
-      body = body.slice(0, range.start) + rendered + body.slice(range.end);
-    } else {
-      // No prior requirement to modify; append it so the change is still
-      // applied. Archive safety (Phase E / F13) will turn this into a
-      // hard error with `validate --active`.
-      body = body.replace(/\s+$/, '') + '\n\n' + rendered;
-    }
+    body = range
+      ? body.slice(0, range.start) + rendered + body.slice(range.end)
+      : body.replace(/\s+$/, '') + '\n\n' + rendered;
   }
-
-  // REMOVED: drop the block entirely.
   for (const req of ast.deltas.removed) {
     const range = findRequirementBlock(body, req.name);
-    if (range) {
-      body = body.slice(0, range.start) + body.slice(range.end);
-    }
+    if (range) body = body.slice(0, range.start) + body.slice(range.end);
   }
-
-  // ADDED: append after the existing content.
   for (const req of ast.deltas.added) {
     body = body.replace(/\s+$/, '') + '\n\n' + renderRequirement(req);
   }
-
-  body = body.replace(/\s+$/, '') + '\n';
-  mkdirSync(dirname(activePath), { recursive: true });
-  writeFileSync(activePath, body, 'utf8');
+  return body.replace(/\s+$/, '') + '\n';
 }
 
-/**
- * The current archive implementation lacks --dry-run, --undo,
- * snapshot creation, and active-spec validation. Until those land,
- * a mistake during archive can silently corrupt the active spec
- * set with no recovery path beyond `git revert`. The notice below
- * is emitted on every run so users always see the limitation
- * before the irreversible step proceeds. Internal tracking lives
- * in the project's audit checklist.
- */
-const ARCHIVE_LIMITATIONS_NOTICE =
-  'archive: this command does not yet support --dry-run, --undo,\n' +
-  '  or active-spec validation. Review the proposed deltas before\n' +
-  '  running and use `git revert` to roll back if needed.\n';
+export function buildArchivePlan(repoRoot: string, changeId: string): ArchivePlan {
+  const changeDir = join(repoRoot, 'openspec', 'changes', changeId);
+  const deltaFiles = fg.sync('specs/*/spec.md', { cwd: changeDir, absolute: false });
+  const changes: CapabilityChange[] = [];
+  for (const rel of deltaFiles) {
+    const text = readFileSync(join(changeDir, rel), 'utf8');
+    const { ast } = parseSpecDelta(text, join(changeDir, rel));
+    const capability = rel.split(/[\\/]/)[1];
+    const activePath = join(repoRoot, 'openspec', 'specs', capability, 'spec.md');
+    const before = existsSync(activePath) ? readFileSync(activePath, 'utf8') : '';
+    changes.push({
+      capability,
+      activePath,
+      before,
+      after: computeCapabilityAfter(activePath, ast),
+      added: ast.deltas.added.map((r) => r.name),
+      modified: ast.deltas.modified.map((r) => r.name),
+      removed: ast.deltas.removed.map((r) => r.name),
+    });
+  }
+  return { changeId, changes };
+}
 
-export function runArchive(cwd: string, changeId: string): number {
+function printPlan(plan: ArchivePlan): void {
+  for (const c of plan.changes) {
+    process.stdout.write(`capability ${c.capability} -> ${c.activePath}\n`);
+    for (const n of c.added) process.stdout.write(`  + ADDED ${n}\n`);
+    for (const n of c.modified) process.stdout.write(`  ~ MODIFIED ${n}\n`);
+    for (const n of c.removed) process.stdout.write(`  - REMOVED ${n}\n`);
+  }
+}
+
+function writePlan(plan: ArchivePlan): void {
+  for (const c of plan.changes) {
+    mkdirSync(dirname(c.activePath), { recursive: true });
+    writeFileSync(c.activePath, c.after, 'utf8');
+  }
+}
+
+export interface ArchiveOptions {
+  dryRun?: boolean;
+  undo?: boolean;
+}
+
+function runUndo(repoRoot: string, changeId: string): number {
+  if (!gitIsClean(repoRoot)) {
+    process.stderr.write(
+      'archive --undo: working tree is dirty. Commit or stash your changes first.\n',
+    );
+    return 1;
+  }
+  const snap = snapshotDir(repoRoot, changeId);
+  if (!existsSync(snap)) {
+    process.stderr.write(
+      `archive --undo: snapshot not found: openspec/.snapshots/${changeId}\n`,
+    );
+    return 1;
+  }
+
+  // Restore openspec/specs/ from the snapshot, byte-for-byte.
+  const specs = join(repoRoot, 'openspec', 'specs');
+  if (existsSync(specs)) rmSync(specs, { recursive: true, force: true });
+  cpSync(snap, specs, { recursive: true });
+
+  // Move the archived folder back to changes/<id>/ (find the dated dir).
+  const archiveBase = join(repoRoot, 'openspec', 'changes', 'archive');
+  const match = existsSync(archiveBase)
+    ? readdirSync(archiveBase).find((n) => n.endsWith(`-${changeId}`))
+    : undefined;
+  if (match) {
+    renameSync(join(archiveBase, match), join(repoRoot, 'openspec', 'changes', changeId));
+  }
+
+  process.stdout.write(
+    `Undid archive of ${changeId}; restored openspec/specs/ from snapshot.\n`,
+  );
+  return 0;
+}
+
+export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions = {}): number {
   const repoRoot = resolve(cwd);
+
+  if (opts.undo) return runUndo(repoRoot, changeId);
+
+  const changeDir = join(repoRoot, 'openspec', 'changes', changeId);
+
+  // --dry-run: preview only. Read-only, so it does not require a clean tree.
+  if (opts.dryRun) {
+    if (!existsSync(changeDir)) {
+      process.stderr.write(`archive: ${changeDir} not found.\n`);
+      return 1;
+    }
+    printPlan(buildArchivePlan(repoRoot, changeId));
+    process.stdout.write('(dry-run) no files written, nothing moved, no commit.\n');
+    return 0;
+  }
 
   if (!gitIsClean(repoRoot)) {
     process.stderr.write(
@@ -121,24 +206,30 @@ export function runArchive(cwd: string, changeId: string): number {
     return 1;
   }
 
-  process.stderr.write(ARCHIVE_LIMITATIONS_NOTICE);
-
-  const changeDir = join(repoRoot, 'openspec', 'changes', changeId);
   if (!existsSync(changeDir)) {
     process.stderr.write(`archive: ${changeDir} not found.\n`);
     return 1;
   }
 
-  // Apply every delta file under the change.
-  const deltaFiles = fg.sync('specs/*/spec.md', { cwd: changeDir, absolute: false });
-  for (const rel of deltaFiles) {
-    const deltaPath = join(changeDir, rel);
-    const text = readFileSync(deltaPath, 'utf8');
-    const { ast } = parseSpecDelta(text, deltaPath);
-    const capability = rel.split(/[\\/]/)[1];
-    const activePath = join(repoRoot, 'openspec', 'specs', capability, 'spec.md');
-    applyDeltaToCapability(activePath, ast);
+  const plan = buildArchivePlan(repoRoot, changeId);
+
+  // Refuse to write if the resulting active set would be structurally
+  // invalid (duplicate requirement names, requirements with no scenario).
+  const planErrors = plan.changes.flatMap((c) => validateActiveContent(c.capability, c.after));
+  if (planErrors.length > 0) {
+    for (const e of planErrors) {
+      process.stderr.write(
+        `archive: would corrupt active set: ${e.capability}: ${e.code} ${e.message}\n`,
+      );
+    }
+    return 1;
   }
+
+  // Snapshot the current active spec set before any modification, so
+  // `archive --undo` can restore it byte-for-byte.
+  takeSnapshot(repoRoot, changeId);
+
+  writePlan(plan);
 
   // Move the change folder under archive/<YYYY-MM-DD>-<change-id>/.
   const archiveBase = join(repoRoot, 'openspec', 'changes', 'archive');
@@ -146,9 +237,12 @@ export function runArchive(cwd: string, changeId: string): number {
   const archivedDir = join(archiveBase, `${todayIso()}-${changeId}`);
   renameSync(changeDir, archivedDir);
 
-  // Stage everything and commit with the structured trailer.
+  // Stage everything and commit with the structured trailers.
   gitAddAll(repoRoot);
-  gitCommit(repoRoot, `archive: ${changeId}`, { 'Archive-Of': changeId });
+  gitCommit(repoRoot, `archive: ${changeId}`, {
+    'Archive-Of': changeId,
+    'Snapshot-At': `openspec/.snapshots/${changeId}`,
+  });
 
   process.stdout.write(`Archived ${changeId} -> ${archivedDir}\n`);
   return 0;

@@ -100,14 +100,23 @@ superspecs list
 # Show the most-recent change and task counts.
 superspecs status
 
-# Archive an approved change: apply ADDED/MODIFIED/REMOVED deltas
-# to openspec/specs/, move the change folder under
-# openspec/changes/archive/YYYY-MM-DD-<id>/, and commit.
-#
-# Note: v0.1.0 ships the archive command without --dry-run, --undo,
-# or active-spec validation. Review the proposed deltas before running
-# and recover with `git revert` if needed.
+# Preview what an archive would do (writes nothing):
+superspecs archive add-retry-logic --dry-run
+
+# Archive an approved change: validates the resulting active spec set,
+# snapshots openspec/specs/ to openspec/.snapshots/<id>/, applies the
+# ADDED/MODIFIED/REMOVED deltas, moves the change folder under
+# openspec/changes/archive/YYYY-MM-DD-<id>/, and commits (with
+# Archive-Of and Snapshot-At trailers). Refuses if the result would
+# duplicate a requirement name or leave a requirement with no scenario.
 superspecs archive add-retry-logic
+
+# Undo the most recent archive of a change (restores from the snapshot;
+# requires a clean working tree):
+superspecs archive add-retry-logic --undo
+
+# Validate the active spec set on its own:
+superspecs validate --active
 ```
 
 ### Error format
