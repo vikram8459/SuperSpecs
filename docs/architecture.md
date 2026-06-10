@@ -213,3 +213,63 @@ to `dist/superspecs.js`. Dependencies: `commander`, `ajv`,
   third runtime).
 - PowerShell — rejected: no serious JSON Schema story; not a
   publishable CLI language.
+
+### ADR-006 — JSON Schema for OpenSpec artefact grammar
+
+**Date:** 2026-05-27 · **Status:** Accepted
+
+#### Decision
+
+OpenSpec artefacts (proposal, spec-delta, tasks, skill-eval) are
+validated against draft-07 JSON Schemas under `schemas/`, compiled
+with `ajv`. A `remark`-based parser converts markdown to the AST the
+schemas validate; errors surface as `file:line:col: SDD<NNN>`.
+
+#### Consequences
+
+- One machine-checkable grammar per artefact; IDEs and CI can both use it.
+- Parser AST shape and schema shape are kept aligned by tests.
+
+### ADR-007 — CLI package name
+
+**Date:** 2026-05-27 · **Status:** Accepted
+
+#### Decision
+
+The CLI publishes as `@superspecs/cli`. The scoped name was available;
+no fallback to `superspecs-cli` was needed.
+
+### ADR-008 — Archive safety
+
+**Date:** 2026-06-10 · **Status:** Accepted
+
+#### Decision
+
+`superspecs archive` is made reversible and non-corrupting:
+
+- A pure `ArchivePlan` computes the resulting active content without
+  writing; `--dry-run` prints the plan and stops.
+- Before writing, the resulting active set is validated in-memory
+  (`validate --active` rules: no duplicate requirement names per
+  capability; every requirement has ≥1 scenario). Archive refuses
+  (non-zero, no write) if the result would be invalid.
+- The current `openspec/specs/` is copied to
+  `openspec/.snapshots/<change-id>/` (gitignored) before any write.
+- The archive commit carries `Archive-Of:` and `Snapshot-At:` trailers.
+- `archive --undo <change-id>` restores `openspec/specs/` from the
+  snapshot byte-for-byte and moves the change folder back. It refuses
+  on a dirty working tree or a missing snapshot.
+
+#### Consequences
+
+- Archiving is safe to run: previewable, snapshotted, validated, and
+  reversible.
+- `openspec/.snapshots/` accumulates local recovery state; it is
+  gitignored and not auto-pruned (a future `--prune` could address this).
+
+#### Limitation
+
+`--undo` restores from the snapshot byte-for-byte. If the user committed
+further edits to `openspec/specs/` after archiving, undo reverts those
+too. The dirty-tree guard catches uncommitted edits; committed downstream
+edits are out of scope for the deterministic restore.
