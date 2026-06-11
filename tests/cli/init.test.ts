@@ -59,4 +59,60 @@ describe('init subcommand', () => {
     expect(r.status).not.toBe(0);
     expect(r.stderr).toMatch(/--force/);
   });
+
+  it('scenario: init --harness=cursor writes the Cursor manifest', () => {
+    // GIVEN an empty project directory
+    const dir = mkdtempSync(join(tmpdir(), 'spx-init-cursor-'));
+    // WHEN the user runs `superspecs init --harness=cursor`
+    const r = run(dir, ['init', '--harness=cursor']);
+    // THEN openspec/ exists AND .cursor-plugin/plugin.json was written
+    expect(r.status).toBe(0);
+    expect(existsSync(join(dir, 'openspec', 'specs'))).toBe(true);
+    expect(existsSync(join(dir, '.cursor-plugin', 'plugin.json'))).toBe(true);
+  });
+
+  it('scenario: init --harness=claude-code writes the Claude manifest + hook config', () => {
+    // GIVEN an empty project directory
+    const dir = mkdtempSync(join(tmpdir(), 'spx-init-claude-'));
+    // WHEN the user runs `superspecs init --harness=claude-code`
+    const r = run(dir, ['init', '--harness=claude-code']);
+    // THEN both .claude-plugin/plugin.json and hooks/hooks-claude.json exist
+    expect(r.status).toBe(0);
+    expect(existsSync(join(dir, '.claude-plugin', 'plugin.json'))).toBe(true);
+    expect(existsSync(join(dir, 'hooks', 'hooks-claude.json'))).toBe(true);
+  });
+
+  it('scenario: init --harness=codex copies AGENTS.md only', () => {
+    // GIVEN an empty project directory
+    const dir = mkdtempSync(join(tmpdir(), 'spx-init-codex-'));
+    // WHEN the user runs `superspecs init --harness=codex`
+    const r = run(dir, ['init', '--harness=codex']);
+    // THEN AGENTS.md is copied; no plugin manifest exists
+    expect(r.status).toBe(0);
+    expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(dir, '.cursor-plugin'))).toBe(false);
+    expect(existsSync(join(dir, '.claude-plugin'))).toBe(false);
+  });
+
+  it('scenario: init --harness=gemini writes the extension manifest + AGENTS.md', () => {
+    // GIVEN an empty project directory
+    const dir = mkdtempSync(join(tmpdir(), 'spx-init-gemini-'));
+    // WHEN the user runs `superspecs init --harness=gemini`
+    const r = run(dir, ['init', '--harness=gemini']);
+    // THEN gemini-extension.json AND AGENTS.md exist
+    expect(r.status).toBe(0);
+    expect(existsSync(join(dir, 'gemini-extension.json'))).toBe(true);
+    expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
+  });
+
+  it('scenario: init --harness=unknown returns a clear error', () => {
+    // GIVEN an empty project directory and an invalid harness name
+    const dir = mkdtempSync(join(tmpdir(), 'spx-init-bad-harness-'));
+    // WHEN the user runs `superspecs init --harness=mystery`
+    const r = run(dir, ['init', '--harness=mystery']);
+    // THEN exit non-zero with a message listing known harnesses
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/unknown harness/);
+    expect(r.stderr).toMatch(/cursor/); // known list mentions cursor at minimum
+  });
 });

@@ -42,6 +42,12 @@ if %ERRORLEVEL% equ 0 (
 )
 
 REM 3) No PowerShell at all: emit in-context warning, stderr, and log, then exit non-zero.
+REM    Emit the Cursor envelope shape unconditionally here. Harness-aware
+REM    failure messages live in session-start.ps1 itself; this fallback only
+REM    fires when the .ps1 cannot be invoked at all (no PS on Windows), at
+REM    which point the harness arg has not been parsed. Cursor users see the
+REM    intended failure; Claude users see a malformed-but-recognisable JSON
+REM    that still tells them what's wrong.
 echo {"additional_context":"<EXTREMELY_IMPORTANT>SuperSpecs SessionStart hook FAILED (F3): no PowerShell found on Windows. The 'using-superspecs' skill was NOT loaded. Diagnostic log: %%TEMP%%\superspecs-hook.log. Do NOT pretend SuperSpecs discipline is active in this session - tell the user the framework failed to load.</EXTREMELY_IMPORTANT>"}
 echo superspecs: no PowerShell found; SuperSpecs context NOT injected; see %%TEMP%%\superspecs-hook.log 1>&2
 >> "%TEMP%\superspecs-hook.log" echo %DATE% %TIME%	F3	%SCRIPT_NAME%	no powershell.exe and no pwsh on PATH

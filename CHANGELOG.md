@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase D — 2026-06-11, multi-tool generalization, Finding 2)
+- `.claude-plugin/plugin.json` — Claude Code plugin manifest. Minimal because Claude auto-discovers the standard `skills/`, `commands/`, and `hooks/` directories at the plugin root.
+- `hooks/hooks-claude.json` — Claude Code SessionStart wiring. Invokes `${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd session-start --harness=claude`.
+- `gemini-extension.json` at repo root — Gemini CLI extension manifest; declares `contextFileName: "AGENTS.md"` so Gemini, Codex, and OpenCode all share one context file.
+- `docs/harnesses.json` + `docs/harnesses.schema.json` — single source of truth for the supported harness list (5: cursor, claude-code, codex, opencode, gemini). Consumed by `superspecs init --harness=`, README install section, and `tests/harness/payload-parity.test.ts`.
+- `tests/harness/payload-parity.test.ts` — 10 replay-only smoke scenarios proving the multi-tool wiring is real: every declared manifest exists; cursor/claude SessionStart hooks emit the canonical skill body in the right envelope shapes (byte-equivalent inner payload); all three AGENTS.md harnesses share the same root AGENTS.md.
+- `superspecs init --harness=<name>` — extends the existing CLI to (additionally) copy the named harness's manifest file(s) and AGENTS.md into the target project. Manifest-only by design; skills/ and commands/ are not duplicated.
+- `docs/architecture.md` ADR-011 — records the path A (multi-tool) decision and rejects the audit's original `harnesses/<name>/` move in favour of per-harness canonical paths. Documents the rejected alternatives (path B Cursor-only rebrand; `harnesses/<name>/` layout; single Node hook entrypoint).
+- AGENTS.md gains a "Key Commands" section per the agents.md spec convention (build/test/eval + the CLI subcommands) so Codex/OpenCode users can answer "how do I build this?" from the file alone.
+
+### Changed (Phase D — 2026-06-11)
+- `hooks/session-start` (bash) and `hooks/session-start.ps1` (PowerShell) — both accept `--harness=cursor|claude` (default `cursor`, back-compat). Single envelope-formatter dispatch; the inner skill text is identical across harnesses (single source of truth) and only the outer JSON shape differs. Zero behaviour change for existing Cursor users.
+- `hooks/session-start.ps1` — forces `[Console]::OutputEncoding = UTF8` so non-ASCII chars in the skill (e.g. U+2192) survive piped stdout on default-locale Windows. Without this, captured output was corrupting bytes > 0x7F to 0x1A (SUB).
+- `commands/archive.md` — slash command now instructs the agent to run `superspecs archive <id> --dry-run` as a preflight before invoking `spx:openspec-archive`. Closes F11.1; F11 fully complete except optional 11.4 (`/superspecs` parent command).
+- README — Installation section split into per-harness blocks (cursor, claude-code, codex, opencode, gemini); Quick Start gains a table mapping each harness to its entry file; "Your Cursor agent" language generalized to mention SessionStart-hook AND AGENTS.md auto-loading paths.
+
 ### Added (Phase E3 — 2026-06-11)
 - `skills/brainstorming/scripts/package.json` — declares `ws@^8.18.0` and `vitest`; marks the brainstorm-companion as a private sub-package.
 - `skills/brainstorming/scripts/vitest.config.mjs` — picks up `tests/**/*.test.mjs`.

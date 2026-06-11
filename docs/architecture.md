@@ -350,3 +350,105 @@ it lives inside the SuperSpecs repo as a local-only helper.
   declares `engines.node >= 20.0.0`; tying the visual companion to a
   newer baseline than the CLI would create install surprises. Revisit
   when the project bumps to Node 22+.
+
+### ADR-011 — Multi-tool generalization via per-harness canonical paths
+
+**Date:** 2026-06-11 · **Status:** Accepted
+
+#### Context
+
+The audit's Finding 2 demanded a choice between path A (multi-tool
+generalization, mirroring Superpowers / OpenSpec) and path B (Cursor-only
+rebrand). The audit's task list assumed path A would consolidate every
+harness's wiring under `harnesses/<name>/` — for example, move
+`.cursor-plugin/` to `harnesses/cursor/`, add `harnesses/claude-code/`,
+`harnesses/codex/`, `harnesses/opencode/`, `gemini-extension.json` at root.
+
+Research of each target harness's actual plugin/loader convention
+(2026-06-11) showed that this organizational move conflicts with how
+each harness discovers configuration:
+
+| Harness | Where it looks |
+|---------|----------------|
+| Cursor | `.cursor-plugin/plugin.json` at workspace root |
+| Claude Code | `.claude-plugin/plugin.json` (auto-discovers standard `skills/`, `commands/`, `hooks/`) |
+| Codex CLI | `AGENTS.md` at repo root (no manifest; auto-loaded) |
+| OpenCode | `AGENTS.md` at repo root (no manifest; auto-loaded) |
+| Gemini CLI | `gemini-extension.json` at extension root (with `contextFileName`) |
+
+Each harness expects its own canonical location. A `harnesses/<name>/`
+folder would fight every harness's auto-discovery and require users to
+re-point every tool's config — a much worse outcome than co-existing
+canonical paths.
+
+Phase A also shipped `AGENTS.md` at root (Finding 10), which without
+realizing it provided a working Codex + OpenCode + agents.md-spec
+integration on day one.
+
+#### Decision
+
+Choose **path A (multi-tool)**, but reject the audit's `harnesses/<name>/`
+move. Co-locate each harness's manifest at its canonical path. The skill
+content, command files, and OpenSpec layout stay shared at repo root
+across every harness.
+
+Concretely:
+
+- `.cursor-plugin/plugin.json` — Cursor (existing; unchanged).
+- `.claude-plugin/plugin.json` + `hooks/hooks-claude.json` — Claude Code.
+- `gemini-extension.json` at root, `contextFileName: AGENTS.md` — Gemini.
+- `AGENTS.md` at root — Codex + OpenCode + agents.md spec.
+- Shared `skills/`, `commands/`, `hooks/`, `bin/superspecs` — same content
+  serves every harness.
+
+Hooks: only Cursor and Claude Code invoke a SessionStart hook. The
+existing `hooks/session-start` and `hooks/session-start.ps1` scripts
+gain a `--harness=cursor|claude` flag (default `cursor` for back-compat)
+and a single envelope-formatter dispatch. No new wrapper scripts; no
+duplication across harnesses for shared concepts.
+
+Source of truth for the harness list: `docs/harnesses.json`. The CLI
+(`superspecs init --harness=<name>`), the README install section, and
+`tests/harness/payload-parity.test.ts` all read from this index. Adding
+a sixth harness = one entry in the JSON + one manifest file + (if it
+uses SessionStart hooks) one branch in the envelope dispatch.
+
+#### Consequences
+
+- Zero file moves; zero breakage for existing Cursor users.
+- Codex and OpenCode users are already supported as of Phase A
+  (`AGENTS.md` shipped) — Phase D acknowledges and documents this.
+- Claude Code support is real, not aspirational: a working manifest
+  and a SessionStart hook that delivers the same skill content.
+- Gemini support is real (manifest + `contextFileName: AGENTS.md`).
+- Hook scripts gain a single new option (`--harness=`) and stay native
+  per-OS (bash + PowerShell). No `node` requirement at session-start
+  time; no new runtime dependency in the hook critical path.
+- One source of truth (`docs/harnesses.json`) for the harness list;
+  consumers (CLI, README, tests) read from it rather than duplicating.
+- F11.1 (`/archive --dry-run` slash-command wiring) gets unblocked as
+  a free side effect: `commands/archive.md` lives at root and is shared
+  by Cursor and Claude Code.
+
+#### Alternatives considered
+
+- **Path B (Cursor-only rebrand).** Rejected: the README tagline and
+  skill content are already tool-agnostic; the only Cursor-specific
+  surface area was the manifest and hook envelope. With four other
+  harnesses needing 1–3 small files each, the rebrand is more work
+  than the multi-tool wiring it would replace.
+- **`harnesses/<name>/` folder layout (audit's original).** Rejected:
+  fights every harness's auto-discovery convention. The audit's task
+  list pre-dated the harness research.
+- **Single Node hook entrypoint (Reading B of "no duplication").**
+  Rejected for this PR: adds a hard `node`-on-PATH requirement at
+  SessionStart time and ~200 ms cold-start overhead. The existing
+  bash + PowerShell pair already passes its tests (Phase B2 / F8) and
+  the `--harness=` flag is the minimal change. The Node-hook
+  refactor can land later if/when maintenance pain emerges; the
+  `--harness=` flag in this ADR doesn't paint that into a corner.
+
+#### Migration
+
+None required. All five harnesses work in the same repo simultaneously
+once this ADR is implemented. Cursor users see no change.

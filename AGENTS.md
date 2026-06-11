@@ -83,8 +83,32 @@ field, filenames, code blocks, and verbatim slug quotes. See
   Controls how aggressively skills self-trigger. See
   `skills/using-superspecs/SKILL.md`.
 
+## Key Commands
+
+For harnesses that read AGENTS.md (Codex, OpenCode, Gemini) and need
+to know how the project is built and tested:
+
+```
+npm install        # install CLI dependencies
+npm run build      # compile TypeScript to dist/
+npm test           # run vitest test suite
+npm run eval       # run replay-based skill evals (see tests/skills/)
+```
+
+The CLI binary is `superspecs` (or `node dist/superspecs.js` before
+install). Key subcommands:
+
+- `superspecs init [--harness=<name>]` — scaffold a new SuperSpecs project.
+- `superspecs validate [<change-id>]` — validate proposal/spec-delta/tasks.
+- `superspecs validate --active` — validate the active spec set.
+- `superspecs archive <change-id> [--dry-run|--undo]` — archive a change.
+- `superspecs doctor` — diagnostic check of installation health.
+- `superspecs eval [<glob>]` — run skill evals.
+
 ## Repository layout
 
 See `docs/architecture.md` for hook contract, OpenSpec folder layout,
-and ADRs. See `docs/openspec-walkthrough.md` for a worked example. See
-`CONTRIBUTING.md` for how to propose changes.
+and ADRs (especially ADR-011 for multi-harness support). See
+`docs/openspec-walkthrough.md` for a worked example. See
+`docs/harnesses.json` for the canonical list of supported harnesses.
+See `CONTRIBUTING.md` for how to propose changes.

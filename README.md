@@ -18,7 +18,7 @@ Instead of jumping straight into code, your Cursor agent steps back, asks what y
 - [How It Works](#how-it-works)
 - [Quick Start](#quick-start)
 - [CLI Quickstart](#cli-quickstart)
-- [Installation](#installation-cursor)
+- [Installation](#installation)
 - [The Basic Workflow](#the-basic-workflow)
 - [Slash Commands](#slash-commands)
 - [What's Inside](#whats-inside)
@@ -55,7 +55,10 @@ From the moment you start a task, the agent:
 5. **Reviews** with two-stage subagent review (spec compliance, then code quality)
 6. **Archives** completed changes — folds deltas into the active spec set at `openspec/specs/`
 
-Because the skills trigger automatically via the `SessionStart` hook, you don't need to do anything special. Your Cursor agent just has SuperSpecs.
+Because the skills trigger automatically — via the `SessionStart` hook
+(Cursor, Claude Code) or via `AGENTS.md` auto-loading (Codex, OpenCode,
+Gemini) — your agent just has SuperSpecs. See [Installation](#installation)
+for the supported harnesses.
 
 ## Quick Start
 
@@ -63,11 +66,23 @@ Because the skills trigger automatically via the `SessionStart` hook, you don't 
 git clone https://github.com/vikram8459/SuperSpecs.git .superspecs
 ```
 
-Point Cursor at `.superspecs/.cursor-plugin/plugin.json`, restart your Cursor session, and start a new chat with:
+Then point your harness at the right entry file:
+
+| Harness     | Entry |
+|-------------|-------|
+| Cursor      | `.superspecs/.cursor-plugin/plugin.json` |
+| Claude Code | `.superspecs/.claude-plugin/plugin.json` (auto-discovers `skills/`, `commands/`) |
+| Codex CLI   | `.superspecs/AGENTS.md` (auto-loaded) |
+| OpenCode    | `.superspecs/AGENTS.md` (auto-loaded) |
+| Gemini CLI  | `.superspecs/gemini-extension.json` |
+
+Restart your session, then ask:
 
 > *"I want to add user authentication to my app."*
 
-The agent will activate `brainstorming` automatically and walk you through the spec-driven flow.
+The agent will activate `spx:brainstorming` automatically and walk you
+through the spec-driven flow. See [Installation](#installation) for
+per-harness setup details.
 
 ## CLI Quickstart
 
@@ -138,26 +153,106 @@ node dist/superspecs.js --help
 
 Requires Node.js 20 LTS or newer (see [ADR-005](./docs/architecture.md#adr-005--cli-runtime-nodejs-20x-lts--typescript)).
 
-## Installation (Cursor)
+## Installation
 
-This is currently a **local plugin** — clone or copy this repo into a directory Cursor can pick up.
+SuperSpecs ships as a single repo that drops into your project (or your
+global agent-tools directory). Five harnesses are supported today — see
+[`docs/architecture.md` ADR-011](./docs/architecture.md#adr-011--multi-tool-generalization-via-per-harness-canonical-paths)
+for the design and [`docs/harnesses.json`](./docs/harnesses.json) for the
+canonical list.
 
-### Option A: As a workspace plugin
+Easiest path: clone the repo, then run `superspecs init --harness=<name>`
+in your project. That writes the right manifest file(s) into your
+project; you keep the SuperSpecs install for the skill content.
 
 ```bash
-git clone https://github.com/vikram8459/SuperSpecs.git .superspecs
+# 1. Get SuperSpecs
+git clone https://github.com/vikram8459/SuperSpecs.git ~/.superspecs
+cd ~/.superspecs && npm install && npm run build && npm link
+# 2. Wire it into your project
+cd ~/my-project
+superspecs init --harness=cursor   # or claude-code | codex | opencode | gemini
 ```
 
-Then point Cursor at `.superspecs/.cursor-plugin/plugin.json`.
+The per-harness blocks below cover what each harness expects, in case
+you'd rather write the manifest by hand or place SuperSpecs somewhere
+non-standard.
 
-### Option B: As a global Cursor plugin
+### Cursor
 
-Copy or symlink the repo contents into your Cursor plugins directory:
+Point Cursor at `.cursor-plugin/plugin.json` inside the SuperSpecs install.
+Two layouts work:
 
-- **macOS / Linux**: `~/.cursor/plugins/superspecs/`
-- **Windows**: `%USERPROFILE%\.cursor\plugins\superspecs\`
+```bash
+# Workspace plugin (per-project)
+git clone https://github.com/vikram8459/SuperSpecs.git .superspecs
+# Then in Cursor: load .superspecs/.cursor-plugin/plugin.json
 
-Reference `plugin.json` from there. See [Cursor's plugin documentation](https://docs.cursor.com) for the current canonical path on your platform.
+# Global plugin
+# macOS / Linux: ~/.cursor/plugins/superspecs/
+# Windows:       %USERPROFILE%\.cursor\plugins\superspecs\
+```
+
+See [Cursor's plugin documentation](https://docs.cursor.com) for the
+current canonical paths on your platform.
+
+### Claude Code
+
+Claude Code auto-discovers the plugin from `.claude-plugin/plugin.json`.
+The manifest points at `hooks/hooks-claude.json`, which wires the
+SessionStart hook to inject `skills/using-superspecs/SKILL.md` into
+every new conversation.
+
+```bash
+# Per-project (recommended):
+git clone https://github.com/vikram8459/SuperSpecs.git .superspecs
+# Then in your Claude Code config, add the plugin path:
+#   ~/.claude.json -> "plugins": ["/abs/path/to/.superspecs"]
+```
+
+See [Claude Code plugin docs](https://code.claude.com/docs/en/agent-sdk/plugins).
+
+### Codex CLI
+
+Codex auto-loads `AGENTS.md` at repo root. Nothing else to wire —
+once `AGENTS.md` is present (and `skills/` is reachable as a sibling),
+the agent gets the SuperSpecs instructions on every session start.
+
+```bash
+# Copy AGENTS.md (and optionally skills/) into your project root:
+superspecs init --harness=codex
+# Or symlink:
+ln -s ~/.superspecs/AGENTS.md AGENTS.md
+ln -s ~/.superspecs/skills    skills
+```
+
+See [Codex AGENTS.md docs](https://developers.openai.com/codex/guides/agents-md).
+
+### OpenCode
+
+Same `AGENTS.md` mechanism as Codex (OpenCode reads the same file convention):
+
+```bash
+superspecs init --harness=opencode
+# Or:
+ln -s ~/.superspecs/AGENTS.md AGENTS.md
+```
+
+See [OpenCode rules docs](https://opencode.ai/docs/rules/).
+
+### Gemini CLI
+
+Gemini reads `gemini-extension.json` and follows `contextFileName`.
+SuperSpecs ships an extension that points at `AGENTS.md`:
+
+```bash
+# Treat the SuperSpecs install as a Gemini extension:
+ln -s ~/.superspecs ~/.gemini/extensions/superspecs
+# Or copy the manifest + AGENTS.md into your project:
+superspecs init --harness=gemini
+```
+
+See [Gemini extension reference](https://geminicli.com/docs/extensions/reference/).
 
 ## The Basic Workflow
 

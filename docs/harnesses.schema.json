@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SuperSpecs harness index",
+  "description": "Schema for docs/harnesses.json. Defines which agent harnesses SuperSpecs supports and what wiring each one needs. See docs/architecture.md ADR-011.",
+  "type": "object",
+  "required": ["harnesses"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_doc": { "type": "string" },
+    "harnesses": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Harness" }
+    }
+  },
+  "$defs": {
+    "Harness": {
+      "type": "object",
+      "required": ["name", "displayName", "manifest", "hook", "agentsMd", "docs"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Short slug used by `superspecs init --harness=<name>`."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable name (used in README install blocks)."
+        },
+        "manifest": {
+          "oneOf": [
+            { "type": "string", "description": "Repo-relative path to the harness's manifest file." },
+            { "type": "null", "description": "No manifest file (harness uses AGENTS.md or similar auto-discovery)." }
+          ]
+        },
+        "hook": {
+          "oneOf": [
+            { "$ref": "#/$defs/Hook" },
+            { "type": "null", "description": "Harness does not invoke a SessionStart hook." }
+          ]
+        },
+        "agentsMd": {
+          "type": "boolean",
+          "description": "Whether this harness reads AGENTS.md at repo root."
+        },
+        "docs": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical docs URL for the harness's plugin/loader convention."
+        },
+        "skillsDirectory": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null", "description": "Harness does not have a separate skills directory convention." }
+          ]
+        },
+        "commandsDirectory": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "_note": { "type": "string" }
+      }
+    },
+    "Hook": {
+      "type": "object",
+      "required": ["type", "config", "envelope"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["sessionStart"],
+          "description": "Hook event the harness fires."
+        },
+        "config": {
+          "type": "string",
+          "description": "Repo-relative path to the harness's hook-config file."
+        },
+        "envelope": {
+          "type": "string",
+          "enum": ["cursor", "claude"],
+          "description": "Envelope shape the hook entrypoint must emit. Dispatched by --harness flag in hooks/session-start{,.ps1}."
+        },
+        "_note": { "type": "string" }
+      }
+    }
+  }
+}

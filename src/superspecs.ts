@@ -20,7 +20,11 @@ program
   .command('init')
   .description('initialize openspec/ folder layout in the current directory')
   .option('-f, --force', 'overwrite non-empty content')
-  .action(async (opts: { force?: boolean }) => {
+  .option(
+    '--harness <name>',
+    'also wire the named harness (cursor|claude-code|codex|opencode|gemini); see docs/harnesses.json',
+  )
+  .action(async (opts: { force?: boolean; harness?: string }) => {
     const { runInit } = await import('./commands/init.js');
     process.exit(runInit(process.cwd(), opts));
   });
