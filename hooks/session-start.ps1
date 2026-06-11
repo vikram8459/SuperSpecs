@@ -20,6 +20,22 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Force UTF-8 stdout so non-ASCII characters in the skill (e.g. the U+2192
+# right-arrow used in skip-skill examples) survive the host's console
+# encoding round-trip. Without this, Windows defaults to the legacy
+# OEM/ANSI codepage and any > 0x7F bytes are corrupted in piped output
+# (which breaks downstream JSON.parse). Hooks ARE machine-consumed; the
+# encoding must be deterministic.
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {
+    # If we can't set it (e.g. inside a transcript host), continue
+    # anyway. ConvertTo-Json escapes non-ASCII as \uXXXX, so the JSON
+    # is still well-formed even if the underlying transport mangles
+    # arbitrary bytes -- but only because ConvertTo-Json does the
+    # escaping, NOT printf-style output.
+}
+
 # Parse --harness=<name> from $args. Unknown/missing -> cursor (back-compat).
 $Harness = 'cursor'
 foreach ($a in $args) {
