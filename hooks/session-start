@@ -1,10 +1,41 @@
 #!/usr/bin/env bash
-# SessionStart hook for SuperSpecs (Cursor)
+# SessionStart hook for SuperSpecs.
+#
+# Reads skills/using-superspecs/SKILL.md and emits a JSON envelope on stdout.
+# The envelope shape depends on the calling harness; pass --harness=<name>.
+#
+# Supported harnesses (see docs/harnesses.json):
+#   --harness=cursor   (default; back-compat for existing Cursor users)
+#     -> { "additional_context": "<envelope-text>" }
+#   --harness=claude   (Claude Code plugins)
+#     -> { "hookSpecificOutput": { "hookEventName": "SessionStart",
+#                                  "additionalContext": "<envelope-text>" } }
+#
+# Adding a sixth harness later = one new branch in build_payload() below,
+# one entry in docs/harnesses.json, and one manifest file. Nothing else.
 
 set -euo pipefail
 
+# Parse --harness=<name>. Anything we don't recognize falls back to cursor
+# rather than failing, because a wrong envelope shape is a softer failure
+# than the hook bailing out entirely.
+HARNESS="cursor"
+for arg in "$@"; do
+  case "$arg" in
+    --harness=*) HARNESS="${arg#--harness=}" ;;
+    *) : ;;
+  esac
+done
+
 if [ "${SUPERSPECS_DISABLE:-}" = "1" ]; then
-  printf '{\n  "additional_context": ""\n}\n'
+  case "$HARNESS" in
+    claude)
+      printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":""}}\n'
+      ;;
+    *)
+      printf '{\n  "additional_context": ""\n}\n'
+      ;;
+  esac
   exit 0
 fi
 
@@ -27,7 +58,7 @@ write_hook_log() {
     fi
     local ts
     ts=$(date +%Y-%m-%dT%H:%M:%S%z)
-    printf '%s\t%s\tsession-start\t%s\n' "$ts" "$code" "$details" >> "$LOG_PATH"
+    printf '%s\t%s\tsession-start[%s]\t%s\n' "$ts" "$code" "$HARNESS" "$details" >> "$LOG_PATH"
   } 2>/dev/null || true
 }
 
@@ -45,10 +76,22 @@ escape_for_json() {
 
 using_superspecs_escaped=$(escape_for_json "$using_superspecs_content")
 
+# Single source of truth for the envelope TEXT (the marker block + skill body).
+# Per-harness JSON wrappers differ only in their outer shape; the inner text
+# is identical across every harness so the agent receives the same content.
 session_context="<EXTREMELY_IMPORTANT>\nYou have SuperSpecs.\n\n**Below is the full content of your 'spx:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**\n\n${using_superspecs_escaped}\n</EXTREMELY_IMPORTANT>"
 
 write_hook_log "OK" "loaded"
 
-printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+case "$HARNESS" in
+  claude)
+    # Claude Code envelope (code.claude.com/docs/en/agent-sdk/plugins).
+    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$session_context"
+    ;;
+  cursor|*)
+    # Cursor envelope (default; preserves back-compat for existing users).
+    printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+    ;;
+esac
 
 exit 0

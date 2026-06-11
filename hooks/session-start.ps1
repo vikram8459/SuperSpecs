@@ -1,23 +1,58 @@
 # SessionStart hook for SuperSpecs (Windows / PowerShell sibling of hooks/session-start).
 #
 # Contract (MUST match hooks/session-start byte-for-byte after LF normalization):
-#   1. Read <plugin_root>/skills/using-superspecs/SKILL.md as UTF-8.
-#   2. Wrap content in the <EXTREMELY_IMPORTANT> envelope below.
-#   3. Emit exactly one JSON object to stdout: {"additional_context": "<envelope>"}.
-#   4. Exit 0 on success.
-#   5. On failure: stderr line + append to %TEMP%\superspecs-hook.log + emit warning
-#      JSON envelope to stdout + exit non-zero (F4/F5).
+#   1. Parse --harness=<name> from args (default: cursor).
+#   2. Read <plugin_root>/skills/using-superspecs/SKILL.md as UTF-8.
+#   3. Wrap content in the <EXTREMELY_IMPORTANT> envelope below.
+#   4. Emit exactly one JSON object to stdout, shape determined by harness:
+#        cursor -> { "additional_context": "<envelope>" }
+#        claude -> { "hookSpecificOutput": { "hookEventName": "SessionStart",
+#                                            "additionalContext": "<envelope>" } }
+#   5. Exit 0 on success.
+#   6. On failure: stderr line + append to %TEMP%\superspecs-hook.log + emit
+#      warning JSON envelope to stdout + exit non-zero (F4/F5).
 #
-# IMPORTANT: stdout must contain ONLY the JSON object. All diagnostic / informational
-# output goes through [Console]::Error.WriteLine(...). Do NOT use Write-Host here.
+# IMPORTANT: stdout must contain ONLY the JSON object. All diagnostic /
+# informational output goes through [Console]::Error.WriteLine(...).
+# Do NOT use Write-Host here.
 #
 # If you change the envelope text below, mirror the change in hooks/session-start.
 
 $ErrorActionPreference = 'Stop'
 
+# Parse --harness=<name> from $args. Unknown/missing -> cursor (back-compat).
+$Harness = 'cursor'
+foreach ($a in $args) {
+    if ($a -is [string] -and $a.StartsWith('--harness=')) {
+        $Harness = $a.Substring('--harness='.Length)
+    }
+}
+
+function Format-EnvelopeJson {
+    param(
+        # Allow empty string (used for the SUPERSPECS_DISABLE=1 path).
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory = $true)][string]$HarnessName
+    )
+    switch ($HarnessName) {
+        'claude' {
+            $inner = [ordered]@{
+                hookEventName    = 'SessionStart'
+                additionalContext = $Text
+            }
+            $obj = [ordered]@{ hookSpecificOutput = $inner }
+            return ($obj | ConvertTo-Json -Compress -Depth 6)
+        }
+        default {
+            # cursor (and any unknown name) gets the back-compat envelope.
+            $obj = [ordered]@{ additional_context = $Text }
+            return ($obj | ConvertTo-Json -Compress -Depth 6)
+        }
+    }
+}
+
 if ($env:SUPERSPECS_DISABLE -eq '1') {
-    $obj = [ordered]@{ additional_context = '' }
-    [Console]::Out.WriteLine(($obj | ConvertTo-Json -Compress -Depth 4))
+    [Console]::Out.WriteLine((Format-EnvelopeJson -Text '' -HarnessName $Harness))
     exit 0
 }
 
@@ -33,7 +68,7 @@ function Write-HookLog {
             Move-Item -LiteralPath $LogPath -Destination $rotated -Force
         }
         $ts = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
-        "$ts`t$Code`tsession-start`t$Details" | Out-File -FilePath $LogPath -Append -Encoding utf8
+        "$ts`t$Code`tsession-start[$Harness]`t$Details" | Out-File -FilePath $LogPath -Append -Encoding utf8
     } catch {
         # Best-effort. Don't compound failures if %TEMP% is unwritable.
     }
@@ -42,8 +77,7 @@ function Write-HookLog {
 function Emit-FailureJson {
     param([string]$Code, [string]$Reason)
     $msg = "<EXTREMELY_IMPORTANT>SuperSpecs SessionStart hook FAILED ($Code): $Reason. The 'using-superspecs' skill was NOT loaded. Diagnostic log: $LogPath. Do NOT pretend SuperSpecs discipline is active in this session - tell the user the framework failed to load.</EXTREMELY_IMPORTANT>"
-    $obj = [ordered]@{ additional_context = $msg }
-    $obj | ConvertTo-Json -Compress -Depth 4
+    return (Format-EnvelopeJson -Text $msg -HarnessName $Harness)
 }
 
 try {
@@ -64,19 +98,19 @@ try {
     # Normalize line endings to \n so Windows and Unix emit identical payloads.
     $skill = $skill -replace "`r`n", "`n" -replace "`r", "`n"
 
+    # Single source of truth for the envelope TEXT (marker block + skill body).
+    # Per-harness JSON wrappers differ only in outer shape; the inner text
+    # is identical across every harness so the agent receives the same content.
     $envelope = "<EXTREMELY_IMPORTANT>`nYou have SuperSpecs.`n`n**Below is the full content of your 'spx:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**`n`n$skill`n</EXTREMELY_IMPORTANT>"
 
-    $obj  = [ordered]@{ additional_context = $envelope }
-    $json = $obj | ConvertTo-Json -Compress -Depth 4
-
     Write-HookLog -Code 'OK' -Details 'loaded'
-    [Console]::Out.WriteLine($json)
+    [Console]::Out.WriteLine((Format-EnvelopeJson -Text $envelope -HarnessName $Harness))
     exit 0
 }
 catch {
     $reason = $_.Exception.Message -replace "`r`n", ' ' -replace "`n", ' '
     Write-HookLog -Code 'F4' -Details $reason
     [Console]::Error.WriteLine("superspecs: session-start.ps1 failed (F4): $reason; see $LogPath")
-    Emit-FailureJson -Code 'F4' -Reason $reason
+    [Console]::Out.WriteLine((Emit-FailureJson -Code 'F4' -Reason $reason))
     exit 5
 }
