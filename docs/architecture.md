@@ -83,8 +83,9 @@ openspec/
   emit `{"additional_context": ""}` and exit 0 without loading the
   skill. Any other value (or unset) loads normally. The check runs
   before any file I/O in both `session-start.ps1` and `session-start`.
-- **`SUPERSPECS_TELEMETRY`** — planned (Finding 8.3, Phase E). Opt-in;
-  disabled by default and in CI.
+- **`SUPERSPECS_TELEMETRY`** — reserved but inert. SuperSpecs collects no
+  telemetry; no code reads this variable and setting it has no effect. See
+  ADR-009 (no telemetry).
 
 ### Hook logging
 
@@ -273,3 +274,26 @@ no fallback to `superspecs-cli` was needed.
 further edits to `openspec/specs/` after archiving, undo reverts those
 too. The dirty-tree guard catches uncommitted edits; committed downstream
 edits are out of scope for the deterministic restore.
+
+### ADR-009 — No telemetry
+
+**Date:** 2026-06-11 · **Status:** Accepted
+
+#### Decision
+
+SuperSpecs collects no telemetry. The CLI and hooks make no network
+phone-home of any kind, opt-in or otherwise. The `SUPERSPECS_TELEMETRY`
+environment variable is reserved but inert — no code reads it.
+
+#### Consequences
+
+- The tool never talks to the network as a side effect of normal use; a
+  privacy-first posture is the default and a feature for an alpha dev tool.
+- No collector, endpoint, or data-retention policy to build or maintain.
+
+#### Revisiting
+
+If concrete demand for usage data appears, telemetry can be added later as
+its own deliberate proposal: opt-in only, minimal payload
+(`{command, version, platform, exit_code}`), disabled in CI, documented
+consent. This ADR records that the current, intentional state is "none".
