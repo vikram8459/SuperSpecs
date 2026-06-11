@@ -1,0 +1,18 @@
+{
+  "name": "superspecs",
+  "version": "0.1.0",
+  "description": "Spec-Driven Development (SDD) skills framework, OpenSpec-based. See docs/architecture.md ADR-011 for multi-harness support.",
+  "author": {
+    "name": "SuperSpecs Contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "sdd",
+    "spec-driven-development",
+    "openspec",
+    "claude-code",
+    "workflows"
+  ],
+  "hooks": "../hooks/hooks-claude.json"
+}
