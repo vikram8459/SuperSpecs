@@ -297,3 +297,56 @@ If concrete demand for usage data appears, telemetry can be added later as
 its own deliberate proposal: opt-in only, minimal payload
 (`{command, version, platform, exit_code}`), disabled in CI, documented
 consent. This ADR records that the current, intentional state is "none".
+
+### ADR-010 — Brainstorm-companion WebSocket: `ws` package, not hand-rolled
+
+**Date:** 2026-06-11 · **Status:** Accepted
+
+#### Decision
+
+The `brainstorming` skill's visual companion (`skills/brainstorming/scripts/server.cjs`)
+uses the [`ws`](https://www.npmjs.com/package/ws) npm package for WebSocket
+framing, masking, ping/pong, close codes, and continuation frames.
+The prior hand-rolled RFC-6455 implementation is replaced.
+
+`skills/brainstorming/scripts/` is now a small Node sub-package with its
+own `package.json` declaring `ws` as a runtime dependency and `vitest`
+as a dev dependency. Tests at `skills/brainstorming/scripts/tests/`
+cover the four cases the audit called out: connect/disconnect, JSON
+message round-trip, fragment handling, and oversize-payload rejection
+(close code 1009).
+
+The sub-package is `"private": true` and intentionally not published —
+it lives inside the SuperSpecs repo as a local-only helper.
+
+#### Consequences
+
+- Battle-tested framing replaces 100+ lines of bespoke RFC-6455 code; the
+  attack surface drops to "whatever `ws` ships with".
+- The visual companion gains a real test suite (`npm test` inside
+  `skills/brainstorming/scripts/`), which gates regressions.
+- A single new runtime dependency (`ws`) is introduced, but only for
+  users who actually run the visual companion. The CLI (`bin/superspecs`)
+  is unaffected and keeps its current dependency set.
+- The external contract is preserved: same env vars (`BRAINSTORM_PORT`,
+  `BRAINSTORM_HOST`, `BRAINSTORM_URL_HOST`, `BRAINSTORM_DIR`,
+  `BRAINSTORM_OWNER_PID`), same stdout JSON event types
+  (`server-started`, `screen-added`, `screen-updated`, `user-event`,
+  `owner-pid-invalid`, `server-stopped`), same HTTP routes, same
+  `helper.js` injection. `start-server.sh` and `stop-server.sh` need no
+  changes.
+
+#### Alternatives considered
+
+- **Deprecate to a separate `@superspecs/brainstorm-visual` package.**
+  Rejected: the visual companion is currently one feature inside one
+  skill; a separate published package is overhead without payoff. If
+  the companion becomes a maintained surface area with its own users,
+  revisit this decision.
+- **Drop the visual companion entirely.** Rejected: it's a working,
+  used capability referenced from the brainstorming skill's offer
+  flow. Removing it would be a behaviour regression.
+- **Node 22+ built-in `WebSocket`.** Rejected for now because the CLI
+  declares `engines.node >= 20.0.0`; tying the visual companion to a
+  newer baseline than the CLI would create install surprises. Revisit
+  when the project bumps to Node 22+.

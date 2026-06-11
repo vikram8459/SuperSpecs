@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase E3 — 2026-06-11)
+- `skills/brainstorming/scripts/package.json` — declares `ws@^8.18.0` and `vitest`; marks the brainstorm-companion as a private sub-package.
+- `skills/brainstorming/scripts/vitest.config.mjs` — picks up `tests/**/*.test.mjs`.
+- `skills/brainstorming/scripts/tests/server.test.mjs` — 5 behaviour tests (connect/disconnect, JSON round-trip, fragment handling, oversize-payload rejection with close code 1009, HTTP waiting-page sanity).
+- `docs/architecture.md` ADR-010 — records the decision to use the `ws` package over hand-rolled RFC-6455 framing; documents the preserved external contract and rejected alternatives (separate package, Node 22+ built-in, drop entirely).
+
+### Changed (Phase E3 — 2026-06-11)
+- `skills/brainstorming/scripts/server.cjs` — rewritten to use `WebSocketServer` from `ws`. External contract preserved: same env vars (`BRAINSTORM_PORT`, `BRAINSTORM_HOST`, `BRAINSTORM_URL_HOST`, `BRAINSTORM_DIR`, `BRAINSTORM_OWNER_PID`), same stdout JSON event types, same HTTP routes, same `helper.js` injection. `start-server.sh` and `stop-server.sh` need no changes. The `server-started` event now reports the actually-bound port (correct when `BRAINSTORM_PORT=0` and the OS picks).
+- `skills/brainstorming/SKILL.md` Visual Companion section — added a "Setup note" pointing at the new `npm install --prefix skills/brainstorming/scripts/` step and ADR-010.
+- `.gitignore` — anchored the root `scripts/` rule to `/scripts/` (was incorrectly matching nested `skills/brainstorming/scripts/`). Added an explicit ignore for `skills/brainstorming/scripts/node_modules/`.
+
 ### Added
 - `docs/architecture.md` — hook contract, skill discovery, OpenSpec layout, ADR section.
 - `docs/skill-authoring.md` — cross-reference and design-notes conventions.

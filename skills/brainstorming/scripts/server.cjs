@@ -1,75 +1,29 @@
-const crypto = require('crypto');
+// SuperSpecs brainstorm-companion server.
+//
+// Local-only HTTP + WebSocket server that backs the brainstorming skill's
+// visual companion (see docs/architecture.md ADR-010).
+//
+// External protocol contract — preserved verbatim from the prior
+// hand-rolled implementation so existing wrappers keep working:
+//   - Environment: BRAINSTORM_PORT, BRAINSTORM_HOST, BRAINSTORM_URL_HOST,
+//     BRAINSTORM_DIR, BRAINSTORM_OWNER_PID.
+//   - stdout JSON event types: `server-started`, `screen-added`,
+//     `screen-updated`, `user-event`, `owner-pid-invalid`, `server-stopped`.
+//   - HTTP routes: `GET /` (latest screen + injected helper),
+//     `GET /files/<name>` (static asset from CONTENT_DIR).
+//   - WebSocket protocol: JSON text frames. Server broadcasts
+//     `{"type":"reload"}`; client (helper.js) sends `{type:'click', ...}`
+//     and other event payloads.
+//
+// This rewrite replaces the prior hand-rolled RFC-6455 implementation
+// with the `ws` package. Behaviour is the same; framing, masking, ping/
+// pong, close codes, and fragmentation are now delegated to a
+// battle-tested library.
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-
-// ========== WebSocket Protocol (RFC 6455) ==========
-
-const OPCODES = { TEXT: 0x01, CLOSE: 0x08, PING: 0x09, PONG: 0x0A };
-const WS_MAGIC = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-
-function computeAcceptKey(clientKey) {
-  return crypto.createHash('sha1').update(clientKey + WS_MAGIC).digest('base64');
-}
-
-function encodeFrame(opcode, payload) {
-  const fin = 0x80;
-  const len = payload.length;
-  let header;
-
-  if (len < 126) {
-    header = Buffer.alloc(2);
-    header[0] = fin | opcode;
-    header[1] = len;
-  } else if (len < 65536) {
-    header = Buffer.alloc(4);
-    header[0] = fin | opcode;
-    header[1] = 126;
-    header.writeUInt16BE(len, 2);
-  } else {
-    header = Buffer.alloc(10);
-    header[0] = fin | opcode;
-    header[1] = 127;
-    header.writeBigUInt64BE(BigInt(len), 2);
-  }
-
-  return Buffer.concat([header, payload]);
-}
-
-function decodeFrame(buffer) {
-  if (buffer.length < 2) return null;
-
-  const secondByte = buffer[1];
-  const opcode = buffer[0] & 0x0F;
-  const masked = (secondByte & 0x80) !== 0;
-  let payloadLen = secondByte & 0x7F;
-  let offset = 2;
-
-  if (!masked) throw new Error('Client frames must be masked');
-
-  if (payloadLen === 126) {
-    if (buffer.length < 4) return null;
-    payloadLen = buffer.readUInt16BE(2);
-    offset = 4;
-  } else if (payloadLen === 127) {
-    if (buffer.length < 10) return null;
-    payloadLen = Number(buffer.readBigUInt64BE(2));
-    offset = 10;
-  }
-
-  const maskOffset = offset;
-  const dataOffset = offset + 4;
-  const totalLen = dataOffset + payloadLen;
-  if (buffer.length < totalLen) return null;
-
-  const mask = buffer.slice(maskOffset, dataOffset);
-  const data = Buffer.alloc(payloadLen);
-  for (let i = 0; i < payloadLen; i++) {
-    data[i] = buffer[dataOffset + i] ^ mask[i % 4];
-  }
-
-  return { opcode, payload: data, bytesConsumed: totalLen };
-}
+const { WebSocketServer } = require('ws');
 
 // ========== Configuration ==========
 
@@ -79,6 +33,7 @@ const URL_HOST = process.env.BRAINSTORM_URL_HOST || (HOST === '127.0.0.1' ? 'loc
 const SESSION_DIR = process.env.BRAINSTORM_DIR || '/tmp/brainstorm';
 const CONTENT_DIR = path.join(SESSION_DIR, 'content');
 const STATE_DIR = path.join(SESSION_DIR, 'state');
+const MAX_PAYLOAD_BYTES = Number(process.env.BRAINSTORM_MAX_PAYLOAD || 1024 * 1024); // 1 MiB
 let ownerPid = process.env.BRAINSTORM_OWNER_PID ? Number(process.env.BRAINSTORM_OWNER_PID) : null;
 
 const MIME_TYPES = {
@@ -160,65 +115,47 @@ function handleRequest(req, res) {
   }
 }
 
-// ========== WebSocket Connection Handling ==========
+// ========== WebSocket — backed by `ws` (ADR-010) ==========
+//
+// The `ws` package handles RFC-6455 framing, masking, ping/pong, close
+// codes, and continuation frames. We only manage the application-level
+// protocol (JSON text payloads) and the lifecycle of connected clients.
 
-const clients = new Set();
-
-function handleUpgrade(req, socket) {
-  const key = req.headers['sec-websocket-key'];
-  if (!key) { socket.destroy(); return; }
-
-  const accept = computeAcceptKey(key);
-  socket.write(
-    'HTTP/1.1 101 Switching Protocols\r\n' +
-    'Upgrade: websocket\r\n' +
-    'Connection: Upgrade\r\n' +
-    'Sec-WebSocket-Accept: ' + accept + '\r\n\r\n'
-  );
-
-  let buffer = Buffer.alloc(0);
-  clients.add(socket);
-
-  socket.on('data', (chunk) => {
-    buffer = Buffer.concat([buffer, chunk]);
-    while (buffer.length > 0) {
-      let result;
-      try {
-        result = decodeFrame(buffer);
-      } catch (e) {
-        socket.end(encodeFrame(OPCODES.CLOSE, Buffer.alloc(0)));
-        clients.delete(socket);
-        return;
-      }
-      if (!result) break;
-      buffer = buffer.slice(result.bytesConsumed);
-
-      switch (result.opcode) {
-        case OPCODES.TEXT:
-          handleMessage(result.payload.toString());
-          break;
-        case OPCODES.CLOSE:
-          socket.end(encodeFrame(OPCODES.CLOSE, Buffer.alloc(0)));
-          clients.delete(socket);
-          return;
-        case OPCODES.PING:
-          socket.write(encodeFrame(OPCODES.PONG, result.payload));
-          break;
-        case OPCODES.PONG:
-          break;
-        default: {
-          const closeBuf = Buffer.alloc(2);
-          closeBuf.writeUInt16BE(1003);
-          socket.end(encodeFrame(OPCODES.CLOSE, closeBuf));
-          clients.delete(socket);
-          return;
-        }
-      }
-    }
+function attachWebSocket(server) {
+  const wss = new WebSocketServer({
+    server,
+    maxPayload: MAX_PAYLOAD_BYTES,
+    // We never serve binary payloads; the helper.js client only sends JSON
+    // text. ws still validates per-frame; rejecting binary up front is a
+    // defence-in-depth measure.
+    perMessageDeflate: false
   });
 
-  socket.on('close', () => clients.delete(socket));
-  socket.on('error', () => clients.delete(socket));
+  wss.on('connection', (ws) => {
+    touchActivity();
+
+    ws.on('message', (data, isBinary) => {
+      touchActivity();
+      if (isBinary) {
+        // Protocol mismatch: helper only sends text JSON.
+        ws.close(1003, 'binary not accepted');
+        return;
+      }
+      handleMessage(data.toString('utf8'));
+    });
+
+    ws.on('error', () => { /* ws emits 'close' next; nothing to do */ });
+  });
+
+  // Expose broadcast as a closure over `wss` (no separate clients Set).
+  return function broadcast(msg) {
+    const payload = JSON.stringify(msg);
+    for (const client of wss.clients) {
+      if (client.readyState === client.OPEN) {
+        try { client.send(payload); } catch (_) { /* socket already closing */ }
+      }
+    }
+  };
 }
 
 function handleMessage(text) {
@@ -229,18 +166,10 @@ function handleMessage(text) {
     console.error('Failed to parse WebSocket message:', e.message);
     return;
   }
-  touchActivity();
   console.log(JSON.stringify({ source: 'user-event', ...event }));
   if (event.choice) {
     const eventsFile = path.join(STATE_DIR, 'events');
     fs.appendFileSync(eventsFile, JSON.stringify(event) + '\n');
-  }
-}
-
-function broadcast(msg) {
-  const frame = encodeFrame(OPCODES.TEXT, Buffer.from(JSON.stringify(msg)));
-  for (const socket of clients) {
-    try { socket.write(frame); } catch (e) { clients.delete(socket); }
   }
 }
 
@@ -271,7 +200,7 @@ function startServer() {
   );
 
   const server = http.createServer(handleRequest);
-  server.on('upgrade', handleUpgrade);
+  const broadcast = attachWebSocket(server);
 
   const watcher = fs.watch(CONTENT_DIR, (eventType, filename) => {
     if (!filename || !filename.endsWith('.html')) return;
@@ -338,17 +267,19 @@ function startServer() {
 
   server.listen(PORT, HOST, () => {
     const info = JSON.stringify({
-      type: 'server-started', port: Number(PORT), host: HOST,
-      url_host: URL_HOST, url: 'http://' + URL_HOST + ':' + PORT,
+      type: 'server-started', port: Number(server.address().port), host: HOST,
+      url_host: URL_HOST, url: 'http://' + URL_HOST + ':' + Number(server.address().port),
       screen_dir: CONTENT_DIR, state_dir: STATE_DIR
     });
     console.log(info);
     fs.writeFileSync(path.join(STATE_DIR, 'server-info'), info + '\n');
   });
+
+  return { server, shutdown };
 }
 
 if (require.main === module) {
   startServer();
 }
 
-module.exports = { computeAcceptKey, encodeFrame, decodeFrame, OPCODES };
+module.exports = { startServer };

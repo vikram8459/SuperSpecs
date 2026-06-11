@@ -7,9 +7,16 @@
 # See docs/architecture.md ADR-001.
 releases/
 
-# scripts/ contains local release tooling; not tracked.
-# See docs/architecture.md ADR-001.
-scripts/
+# /scripts/ contains local release tooling; not tracked.
+# See docs/architecture.md ADR-001. Leading slash anchors this to the
+# repo root so it does NOT match nested folders like
+# skills/brainstorming/scripts/ (which IS tracked; see ADR-010).
+/scripts/
+
+# Brainstorm-companion local install — declared by
+# skills/brainstorming/scripts/package.json; not the same as the root
+# /scripts/ release tooling.
+skills/brainstorming/scripts/node_modules/
 
 # Node / TypeScript build output (Phase B1, ADR-005).
 node_modules/
