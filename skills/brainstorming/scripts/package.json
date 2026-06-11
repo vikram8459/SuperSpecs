@@ -1,0 +1,21 @@
+{
+  "name": "@superspecs/brainstorm-companion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only WebSocket + HTTP server that backs the brainstorming skill's visual companion. Not published; lives inside the SuperSpecs repo. See docs/architecture.md ADR-010.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "server.cjs",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@superspecs/cli": "file:../../..",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
