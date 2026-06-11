@@ -1,0 +1,69 @@
+{
+  "$schema": "./harnesses.schema.json",
+  "_doc": "Single source of truth for SuperSpecs harness support. Consumed by `superspecs init --harness=<name>`, README install section, and tests/harness/payload-parity.test.ts. Adding a new harness = one entry here + the canonical manifest file + (if applicable) one branch in hooks/session-start{,.ps1}. See docs/architecture.md ADR-011.",
+  "harnesses": [
+    {
+      "name": "cursor",
+      "displayName": "Cursor",
+      "manifest": ".cursor-plugin/plugin.json",
+      "hook": {
+        "type": "sessionStart",
+        "config": "hooks/hooks-cursor.json",
+        "envelope": "cursor",
+        "_note": "Cursor envelope: {\"additional_context\": \"<string>\"}"
+      },
+      "agentsMd": false,
+      "docs": "https://docs.cursor.com",
+      "skillsDirectory": "skills",
+      "commandsDirectory": "commands"
+    },
+    {
+      "name": "claude-code",
+      "displayName": "Claude Code",
+      "manifest": ".claude-plugin/plugin.json",
+      "hook": {
+        "type": "sessionStart",
+        "config": "hooks/hooks-claude.json",
+        "envelope": "claude",
+        "_note": "Claude Code envelope: {\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"<string>\"}}"
+      },
+      "agentsMd": false,
+      "docs": "https://code.claude.com/docs/en/agent-sdk/plugins",
+      "skillsDirectory": "skills",
+      "commandsDirectory": "commands"
+    },
+    {
+      "name": "codex",
+      "displayName": "OpenAI Codex CLI",
+      "manifest": null,
+      "hook": null,
+      "agentsMd": true,
+      "docs": "https://developers.openai.com/codex/guides/agents-md",
+      "skillsDirectory": ".agents/skills",
+      "commandsDirectory": null,
+      "_note": "Codex reads AGENTS.md at root automatically; no plugin manifest. Skills live at .agents/skills per Codex convention but SuperSpecs ships them at skills/ and references them from AGENTS.md."
+    },
+    {
+      "name": "opencode",
+      "displayName": "OpenCode",
+      "manifest": null,
+      "hook": null,
+      "agentsMd": true,
+      "docs": "https://opencode.ai/docs/rules/",
+      "skillsDirectory": null,
+      "commandsDirectory": null,
+      "_note": "OpenCode reads AGENTS.md at root automatically; no plugin manifest. AGENTS.md content is shared with Codex."
+    },
+    {
+      "name": "gemini",
+      "displayName": "Gemini CLI",
+      "manifest": "gemini-extension.json",
+      "hook": null,
+      "agentsMd": true,
+      "docs": "https://geminicli.com/docs/extensions/reference/",
+      "skillsDirectory": null,
+      "commandsDirectory": null,
+      "_note": "Gemini loads the file named by contextFileName in gemini-extension.json. We point it at AGENTS.md so Gemini, Codex, and OpenCode share one context file."
+    }
+  ]
+}
