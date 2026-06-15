@@ -59,9 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - The "either `docs/specs/` or `design-notes.md` is acceptable" fork in `skills/brainstorming/SKILL.md`.
 
-## [0.1.0] — 2026-XX-XX
+## [0.1.0] — 2026-05-20
 
-Initial public release of SuperSpecs.
+Initial public release of SuperSpecs (tagged `v0.1.0`).
 
 ### Added
 - 15 skills under `skills/<name>/SKILL.md` covering brainstorming, OpenSpec propose/apply/archive, planning, execution (subagent or inline), code review, debugging, worktrees, branch finishing, parallel dispatch, verification before completion, and meta-skill authoring.
