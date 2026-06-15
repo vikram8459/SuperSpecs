@@ -74,7 +74,16 @@ format for tasks.md files you want `superspecs validate` to accept.
 
 ## Schema-version policy
 
-The schemas are versioned as a set with the `superspecs` package.
+Each schema records its version in a `$comment` annotation of the form
+`"schema-version: <semver> ..."` (a sibling of `$schema` and `title`).
+We use `$comment` rather than a custom top-level `version` keyword
+because ajv runs in strict mode and rejects unknown keywords; `$comment`
+is a reserved JSON Schema annotation that ajv always ignores during
+validation. The schemas are versioned **as a set** with the `superspecs`
+package, so every schema's recorded version equals the `package.json`
+version. A test (`tests/schema/version.test.ts`) enforces this — bumping
+the package version without reviewing the schemas fails CI.
+
 Backward-incompatible changes (renames, type tightening, new
 `required` fields) require a major version bump and a migration
 note in `CHANGELOG.md`. Backward-compatible additions (new optional
