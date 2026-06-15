@@ -16,14 +16,12 @@ describe('IDE schema reference path', () => {
       expect(existsSync(p), `${p} must exist`).toBe(true);
 
       const raw = readFileSync(p, 'utf8');
-      let parsed: { $schema?: string };
-      expect(() => {
-        parsed = JSON.parse(raw);
-      }, `${p} must parse as JSON`).not.toThrow();
+      // JSON.parse throwing here fails the test with a clear stack — no
+      // need to wrap in expect(...).not.toThrow() and a non-null assertion.
+      const parsed = JSON.parse(raw) as { $schema?: string };
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      expect(parsed!.$schema, `${p} must declare $schema`).toBeTruthy();
-      expect(parsed!.$schema, `${p} must use draft-07 or later (json-schema.org)`).toMatch(
+      expect(parsed.$schema, `${p} must declare $schema`).toBeTruthy();
+      expect(parsed.$schema, `${p} must use draft-07 or later (json-schema.org)`).toMatch(
         /json-schema\.org/,
       );
     }

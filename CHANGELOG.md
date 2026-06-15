@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (tooling — 2026-06-15)
+- ESLint 9 flat config (`eslint.config.mjs`) + `typescript-eslint` recommended rules, scoped to `src/`, `tests/`, and root config files. `npm run lint` / `npm run lint:fix` added; documented in `CONTRIBUTING.md`. The brainstorm-companion sub-package is excluded (own toolchain). Closes carry-forward CF-B2-2. (Type-checked ruleset is a deliberate follow-up.)
+
 ### Changed (pre-Phase-F cleanup — 2026-06-15)
 - `superspecs validate` proposal errors (SDD100–SDD103) now point at the offending `## Section` heading instead of the file start. `parseProposal` returns a `positions` side-channel; a missing section still falls back to `1:1`. (Carry-forward CF-E-2.)
 - All four JSON schemas now record `schema-version: 0.1.0` in their `$comment` annotation (used over a custom keyword to keep ajv strict mode on); `tests/schema/version.test.ts` enforces that each schema's version equals the package version. (Carry-forward CF-E-4.)
