@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (pre-Phase-F cleanup — 2026-06-15)
+- `superspecs validate` proposal errors (SDD100–SDD103) now point at the offending `## Section` heading instead of the file start. `parseProposal` returns a `positions` side-channel; a missing section still falls back to `1:1`. (Carry-forward CF-E-2.)
+- All four JSON schemas now record `schema-version: 0.1.0` in their `$comment` annotation (used over a custom keyword to keep ajv strict mode on); `tests/schema/version.test.ts` enforces that each schema's version equals the package version. (Carry-forward CF-E-4.)
+- `CHANGELOG.md` `[0.1.0]` entry date backfilled from the `v0.1.0` tag (2026-05-20). (Carry-forward CF-B2-3.)
+
 ### Added (Phase D — 2026-06-11, multi-tool generalization, Finding 2)
 - `.claude-plugin/plugin.json` — Claude Code plugin manifest. Minimal because Claude auto-discovers the standard `skills/`, `commands/`, and `hooks/` directories at the plugin root.
 - `hooks/hooks-claude.json` — Claude Code SessionStart wiring. Invokes `${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd session-start --harness=claude`.
