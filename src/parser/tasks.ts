@@ -11,6 +11,13 @@ export interface TasksAst {
   tasks: TaskAst[];
 }
 
+// Alt file-bullet markup the parser does NOT consume (CF-B2-1). When a
+// task lists files this way but omits the canonical `Files:` line, the
+// raw schema error ("files must NOT have fewer than 1 items", SDD011) is
+// misleading — the author DID list files, just in unsupported syntax.
+// We detect it and emit a targeted SDD013 hint instead.
+const ALT_FILE_BULLET = /^\s*(Create|Modify|Delete|Test|Add|Update|Remove):\s*\S/i;
+
 /**
  * Parallel to TasksAst.tasks. Tasks ast is what the schema validates;
  * positions are kept on the side so the validator can map ajv errors
@@ -26,6 +33,9 @@ export interface TasksPositions {
  */
 function cleanTaskName(raw: string): string {
   let s = raw.trim();
+  // Strip a leading GitHub task-list checkbox (`[ ]`, `[x]`, `[~]`, ...)
+  // that remark surfaces as literal text in the flattened header.
+  s = s.replace(/^\[[ xX~!-]?\]\s*/, '');
   s = s.replace(/^\*\*/, '').replace(/\*\*$/, '');
   s = s.replace(/^\d+\.\s*/, '');
   return s.trim();
@@ -33,11 +43,12 @@ function cleanTaskName(raw: string): string {
 
 export function parseTasks(
   text: string,
-  _file: string,
+  file: string,
 ): { ast: TasksAst; positions: TasksPositions; errors: ParserError[] } {
   const root = parseMarkdown(text);
   const tasks: TaskAst[] = [];
   const positions: Position[] = [];
+  const errors: ParserError[] = [];
 
   for (const node of root.children) {
     if (node.type !== 'list') continue;
@@ -54,6 +65,9 @@ export function parseTasks(
       const task: TaskAst = { name, specRefs: [], files: [] };
       const itemPos = pos(item);
       let sawSpecOrFiles = false;
+      // Alt file-bullet markup seen on this task (e.g. "Create:", "Modify:")
+      // that the parser does not consume into `task.files`.
+      const altFileBullets: string[] = [];
 
       const nested = item.children.find((c) => c.type === 'list') as List | undefined;
       if (nested) {
@@ -77,6 +91,9 @@ export function parseTasks(
               .filter(Boolean);
             for (const p of parts) task.files.push(p);
           }
+          if (!specMatch && !filesMatch && ALT_FILE_BULLET.test(line)) {
+            altFileBullets.push(line.trim());
+          }
         }
       }
 
@@ -85,11 +102,26 @@ export function parseTasks(
       // not the other still need to surface as schema violations, hence the
       // sawSpecOrFiles flag (vs. simply checking task.specRefs.length).
       if (sawSpecOrFiles) {
+        // CF-B2-1: a task that lists files via unsupported bullet markup
+        // (Create:/Modify:/Test:/...) but no `Files:` line would otherwise
+        // get the misleading bare SDD011. Emit a targeted hint instead so
+        // the author knows to switch to the inline `Files:` form. validate.ts
+        // suppresses the generic SDD011 for tasks carrying this hint.
+        if (task.files.length === 0 && altFileBullets.length > 0) {
+          const sample = altFileBullets[0];
+          errors.push({
+            file,
+            line: itemPos.line,
+            col: itemPos.col,
+            code: 'SDD013',
+            message: `Task "${name}" lists files via unsupported bullet markup (e.g. "${sample}"); this parser reads only the inline form. Use: 'Files: path/a.ts, path/b.ts'.`,
+          });
+        }
         tasks.push(task);
         positions.push(itemPos);
       }
     }
   }
 
-  return { ast: { tasks }, positions: { tasks: positions }, errors: [] };
+  return { ast: { tasks }, positions: { tasks: positions }, errors };
 }

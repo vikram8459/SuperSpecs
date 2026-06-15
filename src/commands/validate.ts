@@ -153,12 +153,32 @@ function validateChange(repoRoot: string, changeId: string): CliError[] {
   const tasksPath = join(changeDir, 'tasks.md');
   if (existsSync(tasksPath)) {
     const text = readFileSync(tasksPath, 'utf8');
-    const { ast, positions } = parseTasks(text, tasksPath);
+    const { ast, positions, errors: parserErrs } = parseTasks(text, relative(repoRoot, tasksPath));
+
+    // Surface parser-emitted hints (e.g. SDD013: unsupported file-bullet
+    // markup) and remember which task indices already have a targeted
+    // hint so we can suppress the generic, less-helpful schema error for
+    // the same task (CF-B2-1).
+    const hintedFilesTaskIdx = new Set<number>();
+    for (const pe of parserErrs) {
+      errors.push({ file: pe.file, line: pe.line, col: pe.col, code: pe.code, message: pe.message });
+      if (pe.code === 'SDD013') {
+        const idx = positions.tasks.findIndex((p) => p.line === pe.line && p.col === pe.col);
+        if (idx >= 0) hintedFilesTaskIdx.add(idx);
+      }
+    }
+
     const safeAst: TasksAst = ast;
     if (!validators.tasks(safeAst)) {
       const relPath = relative(repoRoot, tasksPath);
       const ajvErrs = validators.tasks.errors ?? [];
       for (const e of ajvErrs) {
+        // Drop the bare SDD011 (empty files) for a task that already got
+        // the more actionable SDD013 hint.
+        const filesMatch = e.instancePath.match(/^\/tasks\/(\d+)\/files$/);
+        if (filesMatch && e.keyword === 'minItems' && hintedFilesTaskIdx.has(Number(filesMatch[1]))) {
+          continue;
+        }
         const pos = tasksErrorPosition(positions, e);
         const mapped = ajvToCliErrors([e], relPath, pos.line, pos.col);
         errors.push(...mapped);

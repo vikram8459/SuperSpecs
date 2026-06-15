@@ -82,6 +82,23 @@ describe('validate subcommand', () => {
     expect(r.stderr).not.toMatch(/proposal\.md:1:1: SDD101/);
   });
 
+  it('scenario: task using Create:/Test: bullets gets the SDD013 hint, not bare SDD011 (CF-B2-1)', () => {
+    // GIVEN a task that lists files via unsupported `Create:`/`Test:` bullets
+    // instead of the canonical inline `Files:` line
+    const dir = setup('validate-task-alt-bullets');
+    // WHEN superspecs validate is run
+    const r = run(dir, ['validate', 'good-x']);
+    // THEN exit non-zero AND the actionable SDD013 hint is reported,
+    // naming the task and the unsupported bullet
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/openspec\/changes\/good-x\/tasks\.md:\d+:\d+: SDD013/);
+    expect(r.stderr).toMatch(/Do thing/);
+    expect(r.stderr).toMatch(/Create:/);
+    // AND the misleading bare "files must NOT have fewer than 1 items"
+    // (SDD011) is suppressed for that task — only the hint shows.
+    expect(r.stderr).not.toMatch(/SDD011/);
+  });
+
   it('scenario: validate-all walks every change', () => {
     // GIVEN two change folders, one well-formed and one with a missing scenario
     const dir = setup('validate-good');
