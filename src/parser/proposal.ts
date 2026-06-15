@@ -1,4 +1,4 @@
-import { parseMarkdown, headingText, flattenPhrasing, type ParserError } from './shared.js';
+import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
 import type { Heading, Paragraph, List, ListItem } from 'mdast';
 
 export interface ProposalAst {
@@ -11,7 +11,31 @@ export interface ProposalAst {
   };
 }
 
-export function parseProposal(text: string, _file: string): { ast: ProposalAst; errors: ParserError[] } {
+/**
+ * Source positions for each part of the proposal, kept on the side
+ * (parallel to ProposalAst) so the validator can map an ajv error back
+ * to the offending heading instead of falling back to (1, 1). Mirrors
+ * the `TasksPositions` side-channel in parser/tasks.ts.
+ *
+ * Each position points at the relevant `## Section` heading (or the
+ * `# Title` heading). When a section heading is absent entirely, its
+ * position falls back to (1, 1) — the error is "section missing", so
+ * there is no better source location than the file start.
+ */
+export interface ProposalPositions {
+  title: Position;
+  why: Position;
+  whatChanges: Position;
+  outOfScope: Position;
+  impact: Position;
+}
+
+const ORIGIN: Position = { line: 1, col: 1 };
+
+export function parseProposal(
+  text: string,
+  _file: string,
+): { ast: ProposalAst; positions: ProposalPositions; errors: ParserError[] } {
   const root = parseMarkdown(text);
   const errors: ParserError[] = [];
 
@@ -23,6 +47,13 @@ export function parseProposal(text: string, _file: string): { ast: ProposalAst; 
     whatChanges: [],
     outOfScope: [],
     impact: '',
+  };
+  const positions: ProposalPositions = {
+    title: top ? pos(top) : { ...ORIGIN },
+    why: { ...ORIGIN },
+    whatChanges: { ...ORIGIN },
+    outOfScope: { ...ORIGIN },
+    impact: { ...ORIGIN },
   };
   let current: keyof ProposalAst['sections'] | null = null;
   const proseBuf: string[] = [];
@@ -46,6 +77,9 @@ export function parseProposal(text: string, _file: string): { ast: ProposalAst; 
         else if (t === 'out of scope') current = 'outOfScope';
         else if (t === 'impact') current = 'impact';
         else current = null;
+        // Record the heading position so a schema error on this section
+        // points here rather than at the file start.
+        if (current) positions[current] = pos(h);
       }
       continue;
     }
@@ -77,5 +111,5 @@ export function parseProposal(text: string, _file: string): { ast: ProposalAst; 
   }
   flushProse();
 
-  return { ast: { title, sections }, errors };
+  return { ast: { title, sections }, positions, errors };
 }

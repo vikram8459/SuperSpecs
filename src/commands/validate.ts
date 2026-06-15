@@ -2,7 +2,7 @@ import fg from 'fast-glob';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import type { ErrorObject } from 'ajv';
-import { parseProposal } from '../parser/proposal.js';
+import { parseProposal, type ProposalPositions } from '../parser/proposal.js';
 import { parseSpecDelta, type SpecDeltaAst } from '../parser/spec-delta.js';
 import { parseTasks, type TasksAst, type TasksPositions } from '../parser/tasks.js';
 import { validators } from '../schema/load.js';
@@ -70,27 +70,56 @@ function tasksErrorPosition(
   return p;
 }
 
+/**
+ * Map an ajv error on the proposal AST back to the source position of
+ * the offending heading. Paths: /title (SDD103), /sections/why (SDD100),
+ * /sections/whatChanges (SDD101), /sections/impact (SDD102), and
+ * /sections/outOfScope. A missing-section error resolves to the section's
+ * recorded position, which falls back to (1, 1) when the heading is
+ * absent entirely. ajv reports a missing required property on the PARENT
+ * path (e.g. instancePath "/sections" with params.missingProperty
+ * "impact"), so we consult missingProperty too.
+ */
+function proposalErrorPosition(
+  positions: ProposalPositions,
+  e: ErrorObject,
+): { line: number; col: number } {
+  // Direct hits on a named property.
+  if (e.instancePath === '/title') return positions.title;
+  const secMatch = e.instancePath.match(/^\/sections\/(why|whatChanges|outOfScope|impact)/);
+  if (secMatch) return positions[secMatch[1] as keyof ProposalPositions];
+
+  // required-property errors report the parent path + missingProperty.
+  if (e.keyword === 'required' && typeof e.params?.missingProperty === 'string') {
+    const mp = e.params.missingProperty;
+    if (mp === 'title') return positions.title;
+    if (mp in positions) return positions[mp as keyof ProposalPositions];
+  }
+  return { line: 1, col: 1 };
+}
+
 function validateChange(repoRoot: string, changeId: string): CliError[] {
   const changeDir = resolve(repoRoot, 'openspec', 'changes', changeId);
   const errors: CliError[] = [];
 
   // proposal.md
   //
-  // NOTE (Phase E carry-forward): proposal errors currently use a
-  // (1, 1) fallback position. parseTasks already exposes a `positions`
-  // side-channel and parseSpecDelta embeds positions on each AST node.
-  // Mirroring either approach for parseProposal would let us point to
-  // the offending section heading rather than the file start. Tracked
-  // as a Phase E refinement; SDD100 (missing Why), SDD101 (empty What
-  // Changes), SDD102 (missing Impact), and SDD103 (empty title) all
-  // benefit.
+  // Proposal errors map to the offending section heading via the
+  // `positions` side-channel (mirrors parseTasks). SDD100 (missing Why),
+  // SDD101 (empty What Changes), SDD102 (missing Impact), and SDD103
+  // (empty/missing title) now point at the relevant heading, or at
+  // (1, 1) when the section heading is absent entirely (CF-E-2 closed).
   const proposalPath = join(changeDir, 'proposal.md');
   if (existsSync(proposalPath)) {
     const text = readFileSync(proposalPath, 'utf8');
-    const { ast } = parseProposal(text, proposalPath);
+    const { ast, positions } = parseProposal(text, proposalPath);
     if (!validators.proposal(ast)) {
       const relPath = relative(repoRoot, proposalPath);
-      errors.push(...ajvToCliErrors(validators.proposal.errors, relPath, 1, 1));
+      const ajvErrs = validators.proposal.errors ?? [];
+      for (const e of ajvErrs) {
+        const p = proposalErrorPosition(positions, e);
+        errors.push(...ajvToCliErrors([e], relPath, p.line, p.col));
+      }
     }
   }
 
