@@ -69,6 +69,19 @@ describe('validate subcommand', () => {
     expect(r.stderr).toMatch(/openspec\/changes\/good-x\/tasks\.md:\d+:\d+: SDD010/);
   });
 
+  it('scenario: proposal error points at the section heading line (CF-E-2)', () => {
+    // GIVEN a proposal whose `## What Changes` heading (line 7) has no bullets
+    const dir = setup('validate-proposal-empty-section');
+    // WHEN superspecs validate is run
+    const r = run(dir, ['validate', 'good-x']);
+    // THEN exit non-zero AND the SDD101 error reports the heading's real
+    // line (7), not the old (1,1) file-start fallback.
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/openspec\/changes\/good-x\/proposal\.md:7:\d+: SDD101/);
+    // Guard against regression to the (1,1) fallback for this case.
+    expect(r.stderr).not.toMatch(/proposal\.md:1:1: SDD101/);
+  });
+
   it('scenario: validate-all walks every change', () => {
     // GIVEN two change folders, one well-formed and one with a missing scenario
     const dir = setup('validate-good');

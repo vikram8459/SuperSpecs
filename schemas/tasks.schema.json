@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "schema-version: 0.1.0 (versioned as a set with the superspecs package; see schemas/README.md)",
   "title": "OpenSpec Tasks AST",
   "description": "Parsed AST of an openspec/changes/<id>/tasks.md file. Error code prefix: SDD010-SDD019.",
   "type": "object",
