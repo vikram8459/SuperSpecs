@@ -24,6 +24,7 @@ references.
 | SDD010 | tasks | Task with empty `specRefs` |
 | SDD011 | tasks | Task with empty `files` |
 | SDD012 | tasks | Top-level `tasks` array is empty |
+| SDD013 | tasks (parser) | Task lists files via unsupported bullet markup (`Create:`/`Modify:`/`Test:`/…) instead of the inline `Files:` line; suppresses the bare SDD011 for that task |
 | SDD050 | parser | Duplicate requirement name within a delta section |
 | SDD100 | proposal | Missing `## Why` section |
 | SDD101 | proposal | Empty `## What Changes` bullet list |
@@ -66,11 +67,18 @@ The current parser recognises one task format:
 ```
 
 The `Spec:` and `Files:` sub-bullets must use inline comma-separated
-values (not nested bullets). Variants like `- Create: <path>` and
-`- Modify: <path>` are NOT recognised today; tasks authored that
-way will report SDD010 / SDD011. Widening the parser to accept
-richer markup is on the roadmap. Until then, prefer the strict
-format for tasks.md files you want `superspecs validate` to accept.
+values (not nested bullets). Variants like `- Create: <path>`,
+`- Modify: <path>`, and `- Test: <path>` are NOT recognised; a task
+authored that way (with no `Files:` line) reports **SDD013**, a
+targeted hint that names the task and the offending bullet and tells
+you to switch to the inline `Files:` form. The generic SDD011
+("empty files") is suppressed for that task so the actionable hint
+stands alone.
+
+Widening the parser to actually consume `Create:`/`Modify:`/`Test:`
+markup remains a possible future change (it would expand the accepted
+grammar permanently); for now the strict inline form is the single
+canonical format and SDD013 guides authors to it.
 
 ## Schema-version policy
 

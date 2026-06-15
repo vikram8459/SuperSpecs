@@ -95,4 +95,22 @@ A real impact statement.
     }
     expect(ok).toBe(true);
   });
+
+  it('parseTasks emits SDD013 when a task uses unsupported file-bullet markup (CF-B2-1)', () => {
+    const md = `# Tasks — sample
+
+- [ ] **1. Do thing**
+  - Spec: ADDED Foo in cli
+  - Create: src/foo.ts
+  - Test: tests/foo.test.ts
+`;
+    const { ast, errors } = parseTasks(md, 'sample-tasks.md');
+    // The Create:/Test: bullets are not consumed into files...
+    expect(ast.tasks[0].files).toEqual([]);
+    // ...but a targeted SDD013 hint is emitted naming the task and bullet.
+    const hint = errors.find((e) => e.code === 'SDD013');
+    expect(hint).toBeDefined();
+    expect(hint?.message).toContain('Do thing');
+    expect(hint?.message).toMatch(/Create:/);
+  });
 });
