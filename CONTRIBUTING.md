@@ -33,18 +33,31 @@ Skill changes that affect behaviour must come with an eval. The full
 eval runner and corpus land in Phase C / Finding 4; until then, follow
 `skills/writing-skills/testing-skills-with-subagents.md`.
 
-## Running Evals
+## Building, testing, and linting
 
-The eval runner is a Phase C / Finding 4 deliverable. Once it lands:
-
-```powershell
-pwsh ./scripts/run-skill-evals.ps1
-# or, on macOS / Linux
-./scripts/run-skill-evals.sh
+```bash
+npm install      # install dependencies
+npm run build    # compile TypeScript to dist/
+npm test         # run the vitest suite
+npm run lint     # run ESLint over src/, tests/, and root config
+npm run lint:fix # auto-fix what ESLint can
 ```
 
-Until then, manually run the pressure scenarios documented in each
-relevant skill's `testing-*` companion files.
+Linting uses ESLint 9 (flat config in `eslint.config.mjs`) with
+`typescript-eslint` recommended rules. The brainstorm-companion
+sub-package (`skills/brainstorming/scripts/`) is excluded — it has its
+own toolchain. `npm run lint` must exit clean before opening a PR.
+
+## Running Evals
+
+The eval runner ships as the `superspecs eval` CLI subcommand:
+
+```bash
+npm run eval     # replay-based skill evals; exits non-zero on any failure
+```
+
+Eval scenarios live under `tests/skills/`; see `tests/skills/README.md`
+and `docs/skill-evals.md` for the format and the record/replay workflow.
 
 ## Commit Message Conventions
 
@@ -66,6 +79,7 @@ When a commit closes one of the numbered audit findings, tag it:
       for bypass-case fixes).
 - [ ] Skill evals (if the change touched `skills/**`) updated and
       passing.
+- [ ] `npm run lint` and `npm test` both pass.
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]`.
 - [ ] Any local `scripts/` tooling (not tracked) reads from
       `git config --get remote.origin.url`; no hard-coded user/repo
