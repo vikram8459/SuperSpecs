@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -35,10 +35,6 @@ function run(cwd: string, args: string[]): { stdout: string; stderr: string; sta
 }
 
 describe('validate subcommand', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
-  });
-
   it('scenario: clean change passes', () => {
     // GIVEN a well-formed change folder
     const dir = setup('validate-good');

@@ -66,6 +66,51 @@ describe('doctor subcommand', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('scenario: doctor reports the default SUPERSPECS_MODE when unset', () => {
+    const dir = makeHealthy();
+    const prev = process.env.SUPERSPECS_MODE;
+    delete process.env.SUPERSPECS_MODE;
+    try {
+      const { code, out } = captureExit(() => runDoctor(dir));
+      expect(code).toBe(0);
+      expect(out).toMatch(/\[OK \] SUPERSPECS_MODE: auto \(default/);
+    } finally {
+      if (prev !== undefined) process.env.SUPERSPECS_MODE = prev;
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('scenario: doctor accepts a valid SUPERSPECS_MODE', () => {
+    const dir = makeHealthy();
+    const prev = process.env.SUPERSPECS_MODE;
+    process.env.SUPERSPECS_MODE = 'strict';
+    try {
+      const { code, out } = captureExit(() => runDoctor(dir));
+      expect(code).toBe(0);
+      expect(out).toMatch(/\[OK \] SUPERSPECS_MODE: strict/);
+    } finally {
+      if (prev === undefined) delete process.env.SUPERSPECS_MODE;
+      else process.env.SUPERSPECS_MODE = prev;
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('scenario: doctor flags an unrecognized SUPERSPECS_MODE without failing', () => {
+    const dir = makeHealthy();
+    const prev = process.env.SUPERSPECS_MODE;
+    process.env.SUPERSPECS_MODE = 'stict'; // typo
+    try {
+      const { code, out } = captureExit(() => runDoctor(dir));
+      // Informational only: an unknown mode is reported but does not fail.
+      expect(code).toBe(0);
+      expect(out).toMatch(/\[MISSING\] SUPERSPECS_MODE: unrecognized "stict"/);
+    } finally {
+      if (prev === undefined) delete process.env.SUPERSPECS_MODE;
+      else process.env.SUPERSPECS_MODE = prev;
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('scenario: doctor reports an absent hook log', () => {
     // On a healthy install, the hook-log state never affects the exit code,
     // and a hook-log line is always printed (either the tail or "absent").

@@ -237,12 +237,26 @@ export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions =
   const archivedDir = join(archiveBase, `${todayIso()}-${changeId}`);
   renameSync(changeDir, archivedDir);
 
-  // Stage everything and commit with the structured trailers.
-  gitAddAll(repoRoot);
-  gitCommit(repoRoot, `archive: ${changeId}`, {
-    'Archive-Of': changeId,
-    'Snapshot-At': `openspec/.snapshots/${changeId}`,
-  });
+  // Stage everything and commit with the structured trailers. The
+  // working-tree mutations above (writePlan + renameSync) are already
+  // done, so a git failure here would otherwise leave a half-archived
+  // tree with a raw exception. Catch it and point the user at the
+  // snapshot-backed recovery path instead.
+  try {
+    gitAddAll(repoRoot);
+    gitCommit(repoRoot, `archive: ${changeId}`, {
+      'Archive-Of': changeId,
+      'Snapshot-At': `openspec/.snapshots/${changeId}`,
+    });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    process.stderr.write(
+      `archive: files were moved and written, but the git commit failed: ${reason}\n` +
+        `archive: the pre-archive state was snapshotted to openspec/.snapshots/${changeId}.\n` +
+        `archive: run \`superspecs archive ${changeId} --undo\` to restore it, then retry.\n`,
+    );
+    return 1;
+  }
 
   process.stdout.write(`Archived ${changeId} -> ${archivedDir}\n`);
   return 0;

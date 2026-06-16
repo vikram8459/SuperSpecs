@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -21,10 +21,6 @@ function run(args: string[]): { stdout: string; stderr: string; status: number }
 }
 
 describe('Runtime and Entry Point', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
-  });
-
   it('version flag scenario: prints version from package.json and exits 0', () => {
     // GIVEN the package is built and installed
     // WHEN  the user runs `superspecs --version`

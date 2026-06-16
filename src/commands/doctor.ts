@@ -57,8 +57,23 @@ export function runDoctor(root?: string): number {
     ? (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string }).version ?? 'unknown'
     : 'unknown';
 
+  // SUPERSPECS_MODE: report the effective triggering posture and flag an
+  // unrecognized value. Informational only (required: false) — it never
+  // changes the exit code, but it surfaces typos like SUPERSPECS_MODE=stict
+  // that would otherwise silently fall back to auto.
+  const VALID_MODES = ['strict', 'auto', 'manual'];
+  const rawMode = process.env.SUPERSPECS_MODE;
+  const modeKnown = rawMode === undefined || VALID_MODES.includes(rawMode);
+  const modeDetail =
+    rawMode === undefined
+      ? 'auto (default; SUPERSPECS_MODE unset)'
+      : modeKnown
+        ? rawMode
+        : `unrecognized "${rawMode}" (expected strict|auto|manual; falling back to auto)`;
+
   const checks: Check[] = [
     { label: 'CLI version', ok: version !== 'unknown', detail: version, required: false },
+    { label: 'SUPERSPECS_MODE', ok: modeKnown, detail: modeDetail, required: false },
     {
       label: 'hook: session-start.ps1',
       ok: existsSync(join(base, 'hooks', 'session-start.ps1')),

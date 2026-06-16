@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,10 +21,6 @@ function run(cwd: string, args: string[]): { stdout: string; stderr: string; sta
 }
 
 describe('list and status subcommands', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
-  });
-
   it('scenario: list output format', () => {
     // GIVEN one in-flight change `add-foo`, one archived `2026-05-26-bar`,
     //       and one capability `cli`

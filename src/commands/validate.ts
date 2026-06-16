@@ -3,43 +3,19 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import { parseProposal, type ProposalPositions } from '../parser/proposal.js';
-import { parseSpecDelta, type SpecDeltaAst } from '../parser/spec-delta.js';
+import { parseSpecDelta, type SpecDeltaPositions } from '../parser/spec-delta.js';
 import { parseTasks, type TasksAst, type TasksPositions } from '../parser/tasks.js';
 import { validators } from '../schema/load.js';
 import { ajvToCliErrors, formatError, type CliError } from '../schema/errors.js';
 import { validateActiveContent } from './validate-active.js';
 
 /**
- * Strip the parser's position metadata from a spec-delta AST so the
- * schema (which has additionalProperties: false) accepts it.
- */
-function stripSpecDeltaPositions(ast: SpecDeltaAst): SpecDeltaAst {
-  const strip = (req: SpecDeltaAst['deltas']['added'][number]) => ({
-    name: req.name,
-    body: req.body,
-    scenarios: req.scenarios.map((s) => ({
-      name: s.name,
-      given: s.given,
-      when: s.when,
-      then: s.then,
-    })),
-  });
-  return {
-    capability: ast.capability,
-    deltas: {
-      added: ast.deltas.added.map(strip) as SpecDeltaAst['deltas']['added'],
-      modified: ast.deltas.modified.map(strip) as SpecDeltaAst['deltas']['modified'],
-      removed: ast.deltas.removed.map(strip) as SpecDeltaAst['deltas']['removed'],
-    },
-  };
-}
-
-/**
  * Resolve an ajv error's instancePath back to a (line, col) using the
- * original AST's preserved positions. Falls back to (1, 1) if no match.
+ * parser's parallel position side-channel. Falls back to (1, 1) if no
+ * match.
  */
 function specDeltaErrorPosition(
-  ast: SpecDeltaAst,
+  positions: SpecDeltaPositions,
   e: ErrorObject,
 ): { line: number; col: number } {
   // Expected paths: /deltas/<section>/<idx>(/scenarios/<sidx>(/then|/given|/when))?
@@ -48,13 +24,13 @@ function specDeltaErrorPosition(
   const section = m[1] as 'added' | 'modified' | 'removed';
   const reqIdx = Number(m[2]);
   const scenIdx = m[3] !== undefined ? Number(m[3]) : undefined;
-  const req = ast.deltas[section][reqIdx];
-  if (!req) return { line: 1, col: 1 };
+  const reqPos = positions[section][reqIdx];
+  if (!reqPos) return { line: 1, col: 1 };
   if (scenIdx !== undefined) {
-    const sc = req.scenarios[scenIdx];
-    if (sc) return sc.position;
+    const sc = reqPos.scenarios[scenIdx];
+    if (sc) return sc;
   }
-  return req.position;
+  return reqPos.position;
 }
 
 function tasksErrorPosition(
@@ -127,7 +103,7 @@ function validateChange(repoRoot: string, changeId: string): CliError[] {
   const deltaFiles = fg.sync('specs/*/spec.md', { cwd: changeDir, absolute: true });
   for (const f of deltaFiles) {
     const text = readFileSync(f, 'utf8');
-    const { ast, errors: parserErrs } = parseSpecDelta(text, relative(repoRoot, f));
+    const { ast, positions, errors: parserErrs } = parseSpecDelta(text, relative(repoRoot, f));
     for (const pe of parserErrs) {
       errors.push({
         file: pe.file,
@@ -137,12 +113,13 @@ function validateChange(repoRoot: string, changeId: string): CliError[] {
         message: pe.message,
       });
     }
-    const validatable = stripSpecDeltaPositions(ast);
-    if (!validators.specDelta(validatable)) {
+    // The AST is schema-clean (positions live in the side-channel), so it
+    // can be validated directly with no stripping.
+    if (!validators.specDelta(ast)) {
       const relPath = relative(repoRoot, f);
       const ajvErrs = validators.specDelta.errors ?? [];
       for (const e of ajvErrs) {
-        const pos = specDeltaErrorPosition(ast, e);
+        const pos = specDeltaErrorPosition(positions, e);
         const mapped = ajvToCliErrors([e], relPath, pos.line, pos.col);
         errors.push(...mapped);
       }

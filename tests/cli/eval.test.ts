@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -45,8 +45,6 @@ const good = {
 };
 
 describe('eval subcommand', () => {
-  beforeAll(() => execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true }));
-
   it('scenario: eval command passes on a healthy corpus', () => {
     const dir = corpus();
     writeEval(dir, 'a.eval.json', good);

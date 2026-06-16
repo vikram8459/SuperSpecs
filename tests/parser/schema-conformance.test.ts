@@ -22,28 +22,9 @@ describe('Parser output conforms to JSON Schemas', () => {
     const { ast, errors } = parseSpecDelta(text, 'simple-delta.md');
     expect(errors).toHaveLength(0);
 
-    // Strip the position field which is parser-only metadata not in the schema.
-    const stripPos = (req: { position?: unknown; scenarios: { position?: unknown }[] } & Record<string, unknown>) => {
-      const { position: _p, scenarios, ...rest } = req;
-      void _p;
-      return {
-        ...rest,
-        scenarios: scenarios.map((s) => {
-          const { position: _sp, ...sRest } = s;
-          void _sp;
-          return sRest;
-        }),
-      };
-    };
-    const validatable = {
-      capability: ast.capability,
-      deltas: {
-        added: ast.deltas.added.map(stripPos),
-        modified: ast.deltas.modified.map(stripPos),
-        removed: ast.deltas.removed.map(stripPos),
-      },
-    };
-    const ok = validateSpecDelta(validatable);
+    // Positions now live in a parallel side-channel, so the AST is already
+    // schema-clean and needs no stripping before validation.
+    const ok = validateSpecDelta(ast);
     if (!ok) {
       // Surface the validator errors so a failure here is actionable.
       throw new Error('spec-delta schema rejected parser output:\n' + JSON.stringify(validateSpecDelta.errors, null, 2));

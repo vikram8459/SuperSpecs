@@ -69,7 +69,7 @@ The environment variable `SUPERSPECS_MODE` lets the user override the default tr
 | `auto`     | **Default.** 1% rule applies unless the request matches a documented "Skip skills when" case. |
 | `manual`   | Skills only run when explicitly invoked by the user (`use spx:<name>` or `/<command>`). For experienced users who want a quiet agent. |
 
-The mode is informational today — there is no runtime check yet (future work: `spx:doctor`). Document the value the user chooses in the chat, and respect it for the session.
+The mode governs agent behaviour (there is no enforcement at the tool layer that can stop the agent). `superspecs doctor` reports the effective mode and flags an unrecognized value (e.g. a typo like `stict`) so misconfiguration is caught, but the agent is still responsible for honouring the mode. Document the value the user chooses in the chat, and respect it for the session.
 
 ## The Rule
 

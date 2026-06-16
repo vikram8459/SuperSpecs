@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -21,10 +21,6 @@ function run(cwd: string, args: string[]): { stdout: string; stderr: string; sta
 }
 
 describe('init subcommand', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
-  });
-
   it('scenario: init in an empty directory', () => {
     // GIVEN the current directory contains no openspec/ folder
     const dir = mkdtempSync(join(tmpdir(), 'spx-init-empty-'));

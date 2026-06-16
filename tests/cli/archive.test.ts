@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -55,10 +55,6 @@ function run(cwd: string, args: string[]): { stdout: string; stderr: string; sta
 }
 
 describe('archive subcommand (mechanical)', () => {
-  beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
-  });
-
   it('scenario: ADDED requirement appends to capability file', () => {
     // GIVEN a change `add-x` whose delta adds Requirement "New Thing"
     //       and the active spec exists without that requirement

@@ -19,24 +19,36 @@ import { fileURLToPath } from 'node:url';
 const ajv = new AjvCtor({ allErrors: true, allowUnionTypes: true });
 
 /**
- * Resolve a schema path. Schemas ship under `schemas/` in the repo
- * root (when running from source) or under `schemas/` in the package
- * root (when installed via npm). The compiled bin lives at
- * `dist/superspecs.js`, so `<here>/../schemas/*.schema.json` works
- * for the installed case; the from-source case relies on
- * `process.cwd()` being the repo root, which tests guarantee.
+ * Resolve a schema path. Schemas ship under `schemas/` relative to the
+ * compiled module, so resolution is module-relative (independent of the
+ * process cwd):
+ *   - Installed via npm / package root: `dist/schema/load.js` ->
+ *     `<here>/../../schemas/*` is the package's `schemas/`. (The package
+ *     also publishes `schemas/` alongside `dist/`.)
+ *   - From the package root via `dist/superspecs.js`-style layouts:
+ *     `<here>/../schemas/*` covers a flatter `dist/` arrangement.
+ * Both candidates are derived from `import.meta.url`, so running the dev
+ * build from any subdirectory still finds the schemas. The `cwd`-relative
+ * path is kept only as a last-resort fallback.
  */
 function schemaPath(name: string): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  const installedPath = resolve(here, '..', 'schemas', name);
-  // Prefer the path next to the compiled bin if it exists; otherwise
-  // fall back to CWD-relative resolution (dev environment).
-  try {
-    readFileSync(installedPath, 'utf8');
-    return installedPath;
-  } catch {
-    return resolve(process.cwd(), 'schemas', name);
+  const candidates = [
+    resolve(here, '..', '..', 'schemas', name), // dist/schema/load.js -> repo/package root
+    resolve(here, '..', 'schemas', name), // flatter dist/ layouts
+    resolve(process.cwd(), 'schemas', name), // last-resort cwd fallback
+  ];
+  for (const candidate of candidates) {
+    try {
+      readFileSync(candidate, 'utf8');
+      return candidate;
+    } catch {
+      // Try the next candidate.
+    }
   }
+  // Nothing matched; return the cwd path so the caller's readFileSync
+  // throws a clear ENOENT against a predictable location.
+  return candidates[candidates.length - 1];
 }
 
 function load(name: string): ValidateFunction {

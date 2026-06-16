@@ -1,4 +1,4 @@
-import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError } from './shared.js';
+import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
 import type { Root, Heading, Paragraph, List, ListItem } from 'mdast';
 
 export interface ScenarioAst {
@@ -6,14 +6,12 @@ export interface ScenarioAst {
   given: string;
   when: string;
   then: string;
-  position: { line: number; col: number };
 }
 
 export interface RequirementAst {
   name: string;
   body: string;
   scenarios: ScenarioAst[];
-  position: { line: number; col: number };
 }
 
 export interface SpecDeltaAst {
@@ -25,8 +23,31 @@ export interface SpecDeltaAst {
   };
 }
 
+/**
+ * Source positions for each requirement and scenario, kept on the side
+ * (parallel to SpecDeltaAst) so the AST itself stays schema-clean
+ * (spec-delta.schema.json uses additionalProperties: false). Mirrors the
+ * `ProposalPositions` / `TasksPositions` side-channels in the sibling
+ * parsers, so the validator never has to strip metadata before ajv runs.
+ *
+ * The shape mirrors `deltas`: `positions.added[reqIdx]` is the
+ * requirement heading position; `positions.added[reqIdx].scenarios[sIdx]`
+ * is the scenario heading position.
+ */
+export interface RequirementPositions {
+  position: Position;
+  scenarios: Position[];
+}
+
+export interface SpecDeltaPositions {
+  added: RequirementPositions[];
+  modified: RequirementPositions[];
+  removed: RequirementPositions[];
+}
+
 export interface SpecDeltaParseResult {
   ast: SpecDeltaAst;
+  positions: SpecDeltaPositions;
   errors: ParserError[];
 }
 
@@ -56,6 +77,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
     capability: '',
     deltas: { added: [], modified: [], removed: [] },
   };
+  const positions: SpecDeltaPositions = { added: [], modified: [], removed: [] };
 
   // # <capability> — delta for <change-id>
   const top = root.children.find((c): c is Heading => c.type === 'heading' && c.depth === 1);
@@ -67,14 +89,17 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
 
   let currentSection: DeltaSection = null;
   let currentReq: RequirementAst | null = null;
+  let currentReqPos: RequirementPositions | null = null;
   const reqBodyBuf: string[] = [];
 
   const flushReq = () => {
-    if (currentReq && currentSection) {
+    if (currentReq && currentReqPos && currentSection) {
       currentReq.body = reqBodyBuf.join('\n').trim();
       ast.deltas[currentSection].push(currentReq);
+      positions[currentSection].push(currentReqPos);
     }
     currentReq = null;
+    currentReqPos = null;
     reqBodyBuf.length = 0;
   };
 
@@ -101,12 +126,12 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
           name,
           body: '',
           scenarios: [],
-          position: pos(h),
         };
+        currentReqPos = { position: pos(h), scenarios: [] };
         continue;
       }
 
-      if (h.depth === 4 && currentReq && /^Scenario:\s*/i.test(text)) {
+      if (h.depth === 4 && currentReq && currentReqPos && /^Scenario:\s*/i.test(text)) {
         const name = text.replace(/^Scenario:\s*/i, '').trim();
         const next = root.children[i + 1];
         const gwt =
@@ -116,8 +141,8 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
         currentReq.scenarios.push({
           name,
           ...gwt,
-          position: pos(h),
         });
+        currentReqPos.scenarios.push(pos(h));
         continue;
       }
 
@@ -139,23 +164,25 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
   flushReq();
 
   // Detect duplicate requirement names within the same delta section.
+  // Positions come from the parallel side-channel (same index as the AST).
   for (const sec of ['added', 'modified', 'removed'] as const) {
-    const seen = new Map<string, RequirementAst>();
-    for (const r of ast.deltas[sec]) {
+    const seen = new Map<string, Position>();
+    ast.deltas[sec].forEach((r, idx) => {
+      const reqPos = positions[sec][idx].position;
       const prior = seen.get(r.name);
       if (prior) {
         errors.push({
           file,
-          line: r.position.line,
-          col: r.position.col,
+          line: reqPos.line,
+          col: reqPos.col,
           code: 'SDD050',
-          message: `duplicate requirement name "${r.name}" (also at ${file}:${prior.position.line}:${prior.position.col})`,
+          message: `duplicate requirement name "${r.name}" (also at ${file}:${prior.line}:${prior.col})`,
         });
       } else {
-        seen.set(r.name, r);
+        seen.set(r.name, reqPos);
       }
-    }
+    });
   }
 
-  return { ast, errors };
+  return { ast, positions, errors };
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -55,8 +55,6 @@ function run(cwd: string, args: string[]): { stdout: string; stderr: string; sta
 export { initRepo, commitAll, seedChange, run };
 
 describe('archive dry-run', () => {
-  beforeAll(() => execFileSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true }));
-
   it('scenario: dry-run previews without writing', () => {
     const dir = initRepo();
     seedChange(dir, 'add-x', 'cli', 'New Thing');
@@ -111,6 +109,33 @@ describe('active spec validation', () => {
     expect(r.stderr).toMatch(/duplicate requirement name "Dup"/);
   });
 
+  it('scenario: title preceded by a blank line still strips correctly', () => {
+    const dir = initRepo();
+    mkdirSync(join(dir, 'openspec', 'specs', 'cli'), { recursive: true });
+    // A leading blank line before the `# cli` title used to leak the title
+    // into the wrapped body and mis-anchor the parser. The single valid
+    // requirement should still validate cleanly.
+    writeFileSync(
+      join(dir, 'openspec', 'specs', 'cli', 'spec.md'),
+      `\n# cli\n\n### Requirement: Only One\nb\n\n#### Scenario: s\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n`,
+    );
+    const r = run(dir, ['validate', '--active']);
+    expect(r.status).toBe(0);
+    expect(r.stderr).not.toMatch(/SDD/);
+  });
+
+  it('scenario: a leading blank line does not mask a real duplicate', () => {
+    const dir = initRepo();
+    mkdirSync(join(dir, 'openspec', 'specs', 'cli'), { recursive: true });
+    writeFileSync(
+      join(dir, 'openspec', 'specs', 'cli', 'spec.md'),
+      `\n# cli\n\n### Requirement: Dup\nb\n\n#### Scenario: s\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n\n### Requirement: Dup\nb2\n\n#### Scenario: s2\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n`,
+    );
+    const r = run(dir, ['validate', '--active']);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/duplicate requirement name "Dup"/);
+  });
+
   it('scenario: archive refuses to corrupt the active set', () => {
     const dir = initRepo();
     mkdirSync(join(dir, 'openspec', 'specs', 'cli'), { recursive: true });
@@ -142,6 +167,34 @@ describe('archive commit trailers', () => {
     const body = execFileSync('git', ['log', '-1', '--format=%B'], { cwd: dir, encoding: 'utf8' });
     expect(body).toMatch(/Archive-Of: add-x/);
     expect(body).toMatch(/Snapshot-At: openspec\/\.snapshots\/add-x/);
+  });
+});
+
+describe('archive commit failure recovery', () => {
+  it('scenario: a failing commit reports the snapshot-backed undo path', () => {
+    const dir = initRepo();
+    seedChange(dir, 'add-x', 'cli', 'New Thing');
+
+    // Install a pre-commit hook that always fails, so `git add` succeeds
+    // (files already written + folder renamed) but the commit step throws.
+    // Commit it as part of the seed so the working tree is clean when
+    // archive runs its clean-tree gate.
+    const hooksDir = join(dir, '.githooks');
+    mkdirSync(hooksDir, { recursive: true });
+    const preCommit = join(hooksDir, 'pre-commit');
+    writeFileSync(preCommit, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    commitAll(dir, 'seed');
+    // Activate the failing hook only after the seed commit is recorded.
+    execFileSync('git', ['config', 'core.hooksPath', '.githooks'], { cwd: dir });
+
+    const r = run(dir, ['archive', 'add-x']);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/the git commit failed/);
+    expect(r.stderr).toMatch(/superspecs archive add-x --undo/);
+
+    // The snapshot exists, so the documented recovery path is real.
+    const snap = join(dir, 'openspec', '.snapshots', 'add-x', 'cli', 'spec.md');
+    expect(existsSync(snap)).toBe(true);
   });
 });
 

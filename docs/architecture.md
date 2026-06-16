@@ -77,8 +77,11 @@ openspec/
 ## Configuration knobs
 
 - **`SUPERSPECS_MODE`** — `strict` | `auto` (default) | `manual`. Controls
-  how aggressively skills self-trigger. Documented but not yet enforced
-  at runtime. See `skills/using-superspecs/SKILL.md`.
+  how aggressively skills self-trigger. The mode is honoured by the agent
+  (there is no tool-layer enforcement that can stop the agent), but
+  `superspecs doctor` reports the effective value and flags an
+  unrecognized one (e.g. a typo) as an informational check that never
+  changes the exit code. See `skills/using-superspecs/SKILL.md`.
 - **`SUPERSPECS_DISABLE`** — when set to `1`, both SessionStart hooks
   emit `{"additional_context": ""}` and exit 0 without loading the
   skill. Any other value (or unset) loads normally. The check runs
@@ -101,11 +104,14 @@ plus a health report of the install.
 ### `superspecs doctor`
 
 `superspecs doctor` prints a cross-platform health report: CLI
-version, presence of both hook scripts, the Cursor plugin manifest,
-and the three JSON schemas (these are required and affect the exit
-code), plus the hook-log tail and — on Windows only — the PowerShell
-version (informational; never affect the exit code). It exits
-non-zero when a required component is missing.
+version, the effective `SUPERSPECS_MODE`, presence of both hook
+scripts, the Cursor plugin manifest, and the three JSON schemas (the
+hooks, manifest, and schemas are required and affect the exit code),
+plus the hook-log tail and — on Windows only — the PowerShell version.
+The CLI-version, `SUPERSPECS_MODE`, hook-log, and PowerShell lines are
+informational and never affect the exit code (an unrecognized
+`SUPERSPECS_MODE` is flagged but does not fail). It exits non-zero when
+a required component is missing.
 
 ## Architecture Decision Records (ADRs)
 
