@@ -4,12 +4,12 @@
 // root TS/MJS config files. The brainstorm-companion sub-package
 // (skills/brainstorming/scripts/) has its own toolchain and is excluded.
 //
-// This is the `recommended` (non-type-checked) rule set — fast, no
-// tsconfig-for-tests requirement, and it still catches unused vars,
-// no-explicit-any, and the common footguns. Upgrading to the
-// type-checked ruleset (`recommendedTypeChecked`) is a deliberate
-// follow-up: it needs a tsconfig that includes tests/ and adds
-// linter runtime, so it is intentionally out of scope here.
+// The production source (src/) is linted with the TYPE-CHECKED ruleset
+// (`recommendedTypeChecked`) using the project's tsconfig.json (which
+// already includes src/). Tests and root config files keep the fast,
+// non-type-checked ruleset so we do not need a separate tsconfig that
+// includes tests/ — the type-checked rules add little value over the
+// test runner there and would require extra parser plumbing.
 
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -33,8 +33,22 @@ export default tseslint.config(
   // Base JS recommendations.
   js.configs.recommended,
 
-  // TypeScript recommendations (non-type-checked).
+  // TypeScript recommendations (non-type-checked) as the baseline for all
+  // TS/MJS files (tests, root config files).
   ...tseslint.configs.recommended,
+
+  // Production source: layer the type-checked ruleset on top, wired to
+  // tsconfig.json via the project service.
+  {
+    files: ['src/**/*.ts'],
+    extends: [...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 
   // Project-specific tweaks.
   {

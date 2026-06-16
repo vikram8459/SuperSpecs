@@ -84,11 +84,16 @@ description: <one-paragraph "use this when" line that the agent reads at session
 - Bundle aggressively only when the helper is the skill's primary
   deliverable; otherwise keep helpers small and link from SKILL.md.
 
-## Eval requirements (placeholder)
+## Eval requirements
 
-Skill changes that affect behaviour must come with an eval. The full
-eval runner and corpus land in Phase C / Finding 4. Until then, follow
-`skills/writing-skills/testing-skills-with-subagents.md`.
+Skill changes that affect behaviour must come with an eval. The eval
+runner and corpus now ship: write a `*.eval.json` (validated by
+`schemas/skill-eval.schema.json`) plus its recorded `*.transcript.md`
+under `tests/skills/<skill>/`, then run `npm run eval` to replay it. The
+replay model (no model calls or secrets, deterministic in CI) is
+documented in [`skill-evals.md`](./skill-evals.md) and
+`tests/skills/README.md`. For authoring the pressure scenarios behind an
+eval, follow `skills/writing-skills/testing-skills-with-subagents.md`.
 
 ## Pre-merge checklist
 

@@ -19,7 +19,7 @@ export interface ParserError {
 const processor = unified().use(remarkParse);
 
 export function parseMarkdown(text: string): Root {
-  return processor.parse(text) as Root;
+  return processor.parse(text);
 }
 
 export function headingText(node: Heading): string {

@@ -1,5 +1,5 @@
 import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
-import type { Heading, Paragraph, List, ListItem } from 'mdast';
+import type { Heading } from 'mdast';
 
 export interface ProposalAst {
   title: string;
@@ -68,7 +68,7 @@ export function parseProposal(
 
   for (const node of root.children) {
     if (node.type === 'heading') {
-      const h = node as Heading;
+      const h = node;
       if (h.depth === 2) {
         flushProse();
         const t = headingText(h).toLowerCase();
@@ -86,24 +86,24 @@ export function parseProposal(
     if (!current) continue;
 
     if (node.type === 'paragraph') {
-      const s = flattenPhrasing((node as Paragraph).children).trim();
+      const s = flattenPhrasing((node).children).trim();
       if (s) proseBuf.push(s);
     } else if (node.type === 'list') {
       if (current === 'whatChanges' || current === 'outOfScope') {
-        for (const item of (node as List).children as ListItem[]) {
+        for (const item of (node).children) {
           const para = item.children[0];
           if (!para || para.type !== 'paragraph') continue;
-          const s = flattenPhrasing((para as Paragraph).children).trim();
+          const s = flattenPhrasing((para).children).trim();
           if (s) sections[current].push(s);
         }
       } else if (current === 'why' || current === 'impact') {
         // Prose sections may be authored as bullets; concatenate the
         // bullet bodies into the prose buffer so the resulting string
         // is non-empty for the schema's minLength check.
-        for (const item of (node as List).children as ListItem[]) {
+        for (const item of (node).children) {
           const para = item.children[0];
           if (!para || para.type !== 'paragraph') continue;
-          const s = flattenPhrasing((para as Paragraph).children).trim();
+          const s = flattenPhrasing((para).children).trim();
           if (s) proseBuf.push(`- ${s}`);
         }
       }

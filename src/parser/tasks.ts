@@ -1,5 +1,4 @@
 import { parseMarkdown, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
-import type { List, ListItem, Paragraph } from 'mdast';
 
 export interface TaskAst {
   name: string;
@@ -52,13 +51,13 @@ export function parseTasks(
 
   for (const node of root.children) {
     if (node.type !== 'list') continue;
-    const list = node as List;
+    const list = node;
 
-    for (const item of list.children as ListItem[]) {
+    for (const item of list.children) {
       const firstChild = item.children[0];
       if (!firstChild || firstChild.type !== 'paragraph') continue;
 
-      const header = flattenPhrasing((firstChild as Paragraph).children);
+      const header = flattenPhrasing((firstChild).children);
       const name = cleanTaskName(header);
       if (!name) continue;
 
@@ -69,12 +68,12 @@ export function parseTasks(
       // that the parser does not consume into `task.files`.
       const altFileBullets: string[] = [];
 
-      const nested = item.children.find((c) => c.type === 'list') as List | undefined;
+      const nested = item.children.find((c) => c.type === 'list');
       if (nested) {
-        for (const sub of nested.children as ListItem[]) {
+        for (const sub of nested.children) {
           const sp = sub.children[0];
           if (!sp || sp.type !== 'paragraph') continue;
-          const line = flattenPhrasing((sp as Paragraph).children);
+          const line = flattenPhrasing((sp).children);
 
           const specMatch = line.match(/^\s*Spec:\s*(.+)$/i);
           const filesMatch = line.match(/^\s*Files?:\s*(.+)$/i);

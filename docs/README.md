@@ -8,9 +8,11 @@ folder are the source of truth for humans.
 
 | File | What it covers |
 |------|----------------|
-| [`architecture.md`](./architecture.md) | Hook contract, skill discovery, slash-command lifecycle, OpenSpec folder layout, ADR-001 through ADR-004. |
+| [`architecture.md`](./architecture.md) | Hook contract, skill discovery, slash-command lifecycle, OpenSpec folder layout, ADR-001 through ADR-011. |
 | [`openspec-walkthrough.md`](./openspec-walkthrough.md) | End-to-end worked example: `/brainstorm` → `/propose` → `/write-plan` → `/execute-plan` → `/archive` on a tiny CLI feature. |
 | [`skill-authoring.md`](./skill-authoring.md) | Conventions for writing skills: cross-reference notation, design-notes path, Red-Green-Refactor scope, frontmatter, file layout, pre-merge checklist. |
+| [`skill-evals.md`](./skill-evals.md) | The record-once/replay skill-eval model: how `npm run eval` replays committed transcripts against assertions with no model calls or secrets. |
+| [`harnesses.json`](./harnesses.json) / [`harnesses.schema.json`](./harnesses.schema.json) | Single source of truth for the supported harnesses (consumed by `superspecs init --harness=<name>`), plus its JSON Schema. |
 
 ## See also
 
