@@ -158,7 +158,7 @@ SuperSpecs is **spec-driven, not test-driven.** The verification step in every t
 
 The "Step 2: confirm it is wired up" run is a *wiring check* (proves the verification actually reaches the code under spec), not the RED step of Red-Green-Refactor. Calling it RED conflates SDD with TDD.
 
-See also: `spx:openspec-apply` → "Verification vs. TDD" (lines 88–92).
+See also: `spx:openspec-apply` → the "Verification vs. TDD" section.
 
 ## Execution Handoff
 

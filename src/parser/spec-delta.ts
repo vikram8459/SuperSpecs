@@ -1,5 +1,5 @@
 import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
-import type { Root, Heading, Paragraph, List, ListItem } from 'mdast';
+import type { Root, Heading, List } from 'mdast';
 
 export interface ScenarioAst {
   name: string;
@@ -55,10 +55,10 @@ type DeltaSection = 'added' | 'modified' | 'removed' | null;
 
 function gwtFromList(list: List): { given: string; when: string; then: string } {
   const out = { given: '', when: '', then: '' };
-  for (const item of list.children as ListItem[]) {
+  for (const item of list.children) {
     const para = item.children[0];
     if (!para || para.type !== 'paragraph') continue;
-    const raw = flattenPhrasing((para as Paragraph).children);
+    const raw = flattenPhrasing((para).children);
     const m = raw.match(/^\s*\*\*(GIVEN|WHEN|THEN)\*\*\s*(.*)$/s);
     if (!m) continue;
     const key = m[1] as 'GIVEN' | 'WHEN' | 'THEN';
@@ -107,7 +107,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
     const node = root.children[i];
 
     if (node.type === 'heading') {
-      const h = node as Heading;
+      const h = node;
       const text = headingText(h);
 
       if (h.depth === 2) {
@@ -136,7 +136,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
         const next = root.children[i + 1];
         const gwt =
           next && next.type === 'list'
-            ? gwtFromList(next as List)
+            ? gwtFromList(next)
             : { given: '', when: '', then: '' };
         currentReq.scenarios.push({
           name,
@@ -157,7 +157,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
     // out of body for now — the body is the normative SHALL statement
     // immediately under the requirement heading).
     if (currentReq && currentReq.scenarios.length === 0 && node.type === 'paragraph') {
-      const s = flattenPhrasing((node as Paragraph).children).trim();
+      const s = flattenPhrasing((node).children).trim();
       if (s) reqBodyBuf.push(s);
     }
   }
@@ -165,6 +165,10 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
 
   // Detect duplicate requirement names within the same delta section.
   // Positions come from the parallel side-channel (same index as the AST).
+  // Normalize the path embedded in the message to posix separators so the
+  // `file:line:col` reference stays clickable on Windows (mirrors
+  // `formatError` in schema/errors.ts).
+  const filePosix = file.replace(/\\/g, '/');
   for (const sec of ['added', 'modified', 'removed'] as const) {
     const seen = new Map<string, Position>();
     ast.deltas[sec].forEach((r, idx) => {
@@ -176,7 +180,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
           line: reqPos.line,
           col: reqPos.col,
           code: 'SDD050',
-          message: `duplicate requirement name "${r.name}" (also at ${file}:${prior.line}:${prior.col})`,
+          message: `duplicate requirement name "${r.name}" (also at ${filePosix}:${prior.line}:${prior.col})`,
         });
       } else {
         seen.set(r.name, reqPos);

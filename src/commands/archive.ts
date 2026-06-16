@@ -10,7 +10,14 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { gitAddAll, gitCommit, gitIsClean } from '../util/git.js';
+import {
+  gitAddAll,
+  gitCommit,
+  gitIsClean,
+  headIsArchiveOf,
+  gitResetSoftHead1,
+  hasDirtyChangesOutside,
+} from '../util/git.js';
 import { takeSnapshot, snapshotDir } from '../util/snapshot.js';
 import { validateActiveContent } from './validate-active.js';
 import {
@@ -40,25 +47,63 @@ function renderRequirement(req: RequirementAst): string {
 }
 
 /**
+ * Compute, for every character offset in `source`, whether it lies inside a
+ * fenced code block (``` or ~~~). Used so that a `### Requirement:` line that
+ * appears inside a code fence is not mistaken for a real requirement heading.
+ */
+function fencedRegions(source: string): Array<{ start: number; end: number }> {
+  const regions: Array<{ start: number; end: number }> = [];
+  const fence = /^([ \t]*)(`{3,}|~{3,})/gm;
+  let m: RegExpExecArray | null;
+  let openStart: number | null = null;
+  let openMarker = '';
+  while ((m = fence.exec(source)) !== null) {
+    const marker = m[2][0].repeat(3); // normalize to the fence char
+    if (openStart === null) {
+      openStart = m.index;
+      openMarker = marker;
+    } else if (marker === openMarker) {
+      const lineEnd = source.indexOf('\n', m.index);
+      regions.push({ start: openStart, end: lineEnd === -1 ? source.length : lineEnd + 1 });
+      openStart = null;
+      openMarker = '';
+    }
+  }
+  if (openStart !== null) regions.push({ start: openStart, end: source.length });
+  return regions;
+}
+
+function isInsideFence(
+  offset: number,
+  regions: Array<{ start: number; end: number }>,
+): boolean {
+  return regions.some((r) => offset >= r.start && offset < r.end);
+}
+
+/**
  * Find the byte range of an existing `### Requirement: <name>` block in
  * the active spec markdown. The block extends from its `###` line up to
  * (but not including) the next `### Requirement: ` heading or EOF.
+ * `### Requirement:` lines inside fenced code blocks are ignored.
  * Returns null if not found.
  */
 function findRequirementBlock(
   source: string,
   name: string,
 ): { start: number; end: number } | null {
+  const fences = fencedRegions(source);
   const re = /^### Requirement:\s*(.+?)\s*$/gm;
   let match: RegExpExecArray | null;
   while ((match = re.exec(source)) !== null) {
+    if (isInsideFence(match.index, fences)) continue;
     if (match[1].trim() !== name) continue;
     const start = match.index;
-    // Find the start of the next ### Requirement: heading.
+    // Find the start of the next ### Requirement: heading (also skipping
+    // any that fall inside a code fence).
     re.lastIndex = match.index + match[0].length;
-    const next = re.exec(source);
+    let next = re.exec(source);
+    while (next && isInsideFence(next.index, fences)) next = re.exec(source);
     const end = next ? next.index : source.length;
-    // Reset for caller; we only needed the next-match position.
     return { start, end };
   }
   return null;
@@ -72,6 +117,7 @@ export interface CapabilityChange {
   added: string[];
   modified: string[];
   removed: string[];
+  warnings: string[];
 }
 
 export interface ArchivePlan {
@@ -80,7 +126,11 @@ export interface ArchivePlan {
 }
 
 /** Pure: compute the resulting active content for one capability (no write). */
-function computeCapabilityAfter(activePath: string, ast: SpecDeltaAst): string {
+function computeCapabilityAfter(
+  activePath: string,
+  ast: SpecDeltaAst,
+): { after: string; warnings: string[] } {
+  const warnings: string[] = [];
   let body = existsSync(activePath)
     ? readFileSync(activePath, 'utf8')
     : `# ${ast.capability}\n`;
@@ -88,18 +138,37 @@ function computeCapabilityAfter(activePath: string, ast: SpecDeltaAst): string {
   for (const req of ast.deltas.modified) {
     const range = findRequirementBlock(body, req.name);
     const rendered = renderRequirement(req);
-    body = range
-      ? body.slice(0, range.start) + rendered + body.slice(range.end)
-      : body.replace(/\s+$/, '') + '\n\n' + rendered;
+    if (range) {
+      body = body.slice(0, range.start) + rendered + body.slice(range.end);
+    } else {
+      // MODIFIED names a requirement that does not exist in the active set.
+      // This is almost always an authoring mistake (wrong name, or it
+      // should have been ADDED). We still apply it (append) so the delta is
+      // not silently dropped, but we surface a warning so the author can
+      // catch the mismatch.
+      warnings.push(
+        `MODIFIED requirement "${req.name}" was not found in the active set ` +
+          `for ${ast.capability}; appending it as if ADDED. Did you mean to ` +
+          `ADD it, or is the name misspelled?`,
+      );
+      body = body.replace(/\s+$/, '') + '\n\n' + rendered;
+    }
   }
   for (const req of ast.deltas.removed) {
     const range = findRequirementBlock(body, req.name);
-    if (range) body = body.slice(0, range.start) + body.slice(range.end);
+    if (range) {
+      body = body.slice(0, range.start) + body.slice(range.end);
+    } else {
+      warnings.push(
+        `REMOVED requirement "${req.name}" was not found in the active set ` +
+          `for ${ast.capability}; nothing to remove.`,
+      );
+    }
   }
   for (const req of ast.deltas.added) {
     body = body.replace(/\s+$/, '') + '\n\n' + renderRequirement(req);
   }
-  return body.replace(/\s+$/, '') + '\n';
+  return { after: body.replace(/\s+$/, '') + '\n', warnings };
 }
 
 export function buildArchivePlan(repoRoot: string, changeId: string): ArchivePlan {
@@ -112,14 +181,16 @@ export function buildArchivePlan(repoRoot: string, changeId: string): ArchivePla
     const capability = rel.split(/[\\/]/)[1];
     const activePath = join(repoRoot, 'openspec', 'specs', capability, 'spec.md');
     const before = existsSync(activePath) ? readFileSync(activePath, 'utf8') : '';
+    const { after, warnings } = computeCapabilityAfter(activePath, ast);
     changes.push({
       capability,
       activePath,
       before,
-      after: computeCapabilityAfter(activePath, ast),
+      after,
       added: ast.deltas.added.map((r) => r.name),
       modified: ast.deltas.modified.map((r) => r.name),
       removed: ast.deltas.removed.map((r) => r.name),
+      warnings,
     });
   }
   return { changeId, changes };
@@ -131,6 +202,7 @@ function printPlan(plan: ArchivePlan): void {
     for (const n of c.added) process.stdout.write(`  + ADDED ${n}\n`);
     for (const n of c.modified) process.stdout.write(`  ~ MODIFIED ${n}\n`);
     for (const n of c.removed) process.stdout.write(`  - REMOVED ${n}\n`);
+    for (const w of c.warnings) process.stderr.write(`  ! WARNING ${w}\n`);
   }
 }
 
@@ -147,18 +219,38 @@ export interface ArchiveOptions {
 }
 
 function runUndo(repoRoot: string, changeId: string): number {
-  if (!gitIsClean(repoRoot)) {
-    process.stderr.write(
-      'archive --undo: working tree is dirty. Commit or stash your changes first.\n',
-    );
-    return 1;
-  }
   const snap = snapshotDir(repoRoot, changeId);
   if (!existsSync(snap)) {
     process.stderr.write(
       `archive --undo: snapshot not found: openspec/.snapshots/${changeId}\n`,
     );
     return 1;
+  }
+
+  // Undo serves two cases that the previous clean-tree gate could not
+  // both satisfy:
+  //   1. A successful archive (HEAD is the `archive: <id>` commit, tree
+  //      clean). Soft-reset that commit so undo also rewinds history.
+  //   2. A half-archived tree after a failed commit (files written, folder
+  //      moved, tree dirty under openspec/, no archive commit). The error
+  //      message printed by runArchive points here, so undo must NOT
+  //      refuse on a dirty tree in this case.
+  // Both cases only touch the `openspec/` tree, so the guard refuses only
+  // when there are uncommitted changes OUTSIDE openspec/ — unrelated work
+  // that the snapshot restore could clobber.
+  if (hasDirtyChangesOutside(repoRoot, 'openspec')) {
+    process.stderr.write(
+      'archive --undo: working tree has uncommitted changes outside openspec/. ' +
+        'Commit or stash them first.\n',
+    );
+    return 1;
+  }
+  const headIsArchive = headIsArchiveOf(repoRoot, changeId);
+
+  // If the archive was committed, rewind that commit first so history and
+  // the working tree both reflect the pre-archive state.
+  if (headIsArchive) {
+    gitResetSoftHead1(repoRoot);
   }
 
   // Restore openspec/specs/ from the snapshot, byte-for-byte.
@@ -223,6 +315,12 @@ export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions =
       );
     }
     return 1;
+  }
+
+  // Surface non-fatal authoring warnings (e.g. MODIFIED naming a
+  // requirement that does not exist in the active set) before writing.
+  for (const c of plan.changes) {
+    for (const w of c.warnings) process.stderr.write(`archive: warning: ${w}\n`);
   }
 
   // Snapshot the current active spec set before any modification, so

@@ -94,6 +94,7 @@ export function runDoctor(root?: string): number {
     },
   ];
 
+  // The three core schemas are required (validate depends on them).
   for (const name of ['proposal.schema.json', 'spec-delta.schema.json', 'tasks.schema.json']) {
     const p = join(base, 'schemas', name);
     const ok = existsSync(p);
@@ -102,6 +103,21 @@ export function runDoctor(root?: string): number {
       ok,
       detail: ok ? schemaDraft(p) : 'missing',
       required: true,
+    });
+  }
+
+  // skill-eval.schema.json is only needed by `superspecs eval`, not by
+  // core validate, so it is reported but does not fail the exit code.
+  // Surfacing it here means a missing eval schema is visible in `doctor`
+  // rather than only blowing up at eval time (schema/load.ts requires it).
+  {
+    const p = join(base, 'schemas', 'skill-eval.schema.json');
+    const ok = existsSync(p);
+    checks.push({
+      label: 'schema: skill-eval.schema.json',
+      ok,
+      detail: ok ? schemaDraft(p) : 'missing (needed by `superspecs eval`)',
+      required: false,
     });
   }
 
