@@ -53,6 +53,101 @@ export interface SpecDeltaParseResult {
 
 type DeltaSection = 'added' | 'modified' | 'removed' | null;
 
+/**
+ * A `### Requirement:` block located by source offset, with its verbatim
+ * source text. Used by the archive command to splice requirements between
+ * documents without re-rendering them through the lossy `RequirementAst`
+ * (which only models name + a single body paragraph + GIVEN/WHEN/THEN per
+ * scenario, and would silently drop multi-paragraph bodies, prose between
+ * scenarios, extra bullets, and non-canonical formatting).
+ *
+ * `start`/`end` are character offsets into the source string such that
+ * `source.slice(start, end)` is `sourceText`. `end` is the start of the
+ * next `### Requirement:` (or `##`+) heading, or the end of source.
+ */
+export interface RequirementBlock {
+  name: string;
+  section: DeltaSection;
+  start: number;
+  end: number;
+  sourceText: string;
+}
+
+function headingStartOffset(h: Heading): number | undefined {
+  return h.position?.start.offset;
+}
+
+/**
+ * Locate every `### Requirement:` block in `source` by source offset,
+ * preserving verbatim text. Requirement headings inside fenced code blocks
+ * are never matched because remark parses fences as `code` nodes, not
+ * headings — so this is structurally immune to the fence ambiguity the
+ * previous regex scanner had to special-case.
+ *
+ * Each block runs from its `###` heading offset up to (but not including)
+ * the next `### Requirement:` heading, the next `##`+ section heading, or
+ * the end of source — whichever comes first. The `section` field reflects
+ * the most recent `## ADDED|MODIFIED|REMOVED Requirements` heading seen
+ * (null for active spec files, which have no section wrapper).
+ */
+export function extractRequirementBlocks(source: string): RequirementBlock[] {
+  const root: Root = parseMarkdown(source);
+  const headings = root.children.filter(
+    (c): c is Heading => c.type === 'heading',
+  );
+
+  // Boundary offsets: any `### Requirement:` or any `##`+ heading ends the
+  // preceding requirement block.
+  const boundaries: number[] = [];
+  for (const h of headings) {
+    const off = headingStartOffset(h);
+    if (off === undefined) continue;
+    const text = headingText(h);
+    if (h.depth <= 2) {
+      boundaries.push(off);
+    } else if (h.depth === 3 && /^Requirement:\s*/i.test(text)) {
+      boundaries.push(off);
+    }
+  }
+  boundaries.sort((a, b) => a - b);
+
+  const nextBoundary = (after: number): number => {
+    for (const b of boundaries) {
+      if (b > after) return b;
+    }
+    return source.length;
+  };
+
+  const blocks: RequirementBlock[] = [];
+  let section: DeltaSection = null;
+  for (const h of headings) {
+    const off = headingStartOffset(h);
+    if (off === undefined) continue;
+    const text = headingText(h);
+
+    if (h.depth === 2) {
+      if (/^ADDED Requirements$/i.test(text)) section = 'added';
+      else if (/^MODIFIED Requirements$/i.test(text)) section = 'modified';
+      else if (/^REMOVED Requirements$/i.test(text)) section = 'removed';
+      else section = null;
+      continue;
+    }
+
+    if (h.depth === 3 && /^Requirement:\s*/i.test(text)) {
+      const name = text.replace(/^Requirement:\s*/i, '').trim();
+      const end = nextBoundary(off);
+      blocks.push({
+        name,
+        section,
+        start: off,
+        end,
+        sourceText: source.slice(off, end),
+      });
+    }
+  }
+  return blocks;
+}
+
 function gwtFromList(list: List): { given: string; when: string; then: string } {
   const out = { given: '', when: '', then: '' };
   for (const item of list.children) {
@@ -62,7 +157,7 @@ function gwtFromList(list: List): { given: string; when: string; then: string } 
     const m = raw.match(/^\s*\*\*(GIVEN|WHEN|THEN)\*\*\s*(.*)$/s);
     if (!m) continue;
     const key = m[1] as 'GIVEN' | 'WHEN' | 'THEN';
-    const value = m[2].trim();
+    const value = (m[2] ?? '').trim();
     if (key === 'GIVEN') out.given = value;
     else if (key === 'WHEN') out.when = value;
     else out.then = value;
@@ -84,7 +179,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
   if (top) {
     const t = headingText(top);
     const m = t.match(/^([A-Za-z0-9._-]+)\s*[—-]/);
-    ast.capability = m ? m[1] : t.split(/\s+/)[0] || '';
+    ast.capability = (m ? m[1] : t.split(/\s+/)[0]) ?? '';
   }
 
   let currentSection: DeltaSection = null;
@@ -105,6 +200,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
 
   for (let i = 0; i < root.children.length; i++) {
     const node = root.children[i];
+    if (!node) continue;
 
     if (node.type === 'heading') {
       const h = node;
@@ -172,7 +268,8 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
   for (const sec of ['added', 'modified', 'removed'] as const) {
     const seen = new Map<string, Position>();
     ast.deltas[sec].forEach((r, idx) => {
-      const reqPos = positions[sec][idx].position;
+      const reqPos = positions[sec][idx]?.position;
+      if (!reqPos) return;
       const prior = seen.get(r.name);
       if (prior) {
         errors.push({

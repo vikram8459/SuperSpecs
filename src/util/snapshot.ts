@@ -1,13 +1,13 @@
 import { cpSync, existsSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { openspecPaths, snapshotPath } from './openspec.js';
 
 export function snapshotDir(repoRoot: string, changeId: string): string {
-  return join(repoRoot, 'openspec', '.snapshots', changeId);
+  return snapshotPath(repoRoot, changeId);
 }
 
 /** Copy openspec/specs/ to openspec/.snapshots/<id>/ (replacing any prior). */
 export function takeSnapshot(repoRoot: string, changeId: string): string {
-  const specs = join(repoRoot, 'openspec', 'specs');
+  const specs = openspecPaths(repoRoot).specs;
   const dest = snapshotDir(repoRoot, changeId);
   if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
   if (existsSync(specs)) cpSync(specs, dest, { recursive: true });

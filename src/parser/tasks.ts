@@ -79,12 +79,12 @@ export function parseTasks(
           const filesMatch = line.match(/^\s*Files?:\s*(.+)$/i);
 
           if (specMatch) {
-            task.specRefs.push(specMatch[1].trim());
+            task.specRefs.push((specMatch[1] ?? '').trim());
             sawSpecOrFiles = true;
           }
           if (filesMatch) {
             sawSpecOrFiles = true;
-            const parts = filesMatch[1]
+            const parts = (filesMatch[1] ?? '')
               .split(',')
               .map((s) => s.trim().replace(/^`+|`+$/g, ''))
               .filter(Boolean);

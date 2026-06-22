@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { toMessage } from './util/errors.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -34,12 +35,8 @@ program
   .description('validate proposal/spec-delta/tasks against schemas')
   .option('--active', 'validate the active spec set in openspec/specs/')
   .action(async (changeId: string | undefined, opts: { active?: boolean }) => {
-    if (opts.active) {
-      const { runValidateActive } = await import('./commands/validate.js');
-      process.exit(runValidateActive(process.cwd()));
-    }
-    const { runValidate } = await import('./commands/validate.js');
-    process.exit(runValidate(process.cwd(), changeId));
+    const { runValidate, runValidateActive } = await import('./commands/validate.js');
+    process.exit(opts.active ? runValidateActive(process.cwd()) : runValidate(process.cwd(), changeId));
   });
 
 program
@@ -84,4 +81,13 @@ program
     process.exit(await runEval(process.cwd(), glob));
   });
 
-await program.parseAsync(process.argv);
+// Top-level error boundary: a command action that throws (e.g. a malformed
+// user file, an unexpected fs error) should surface a single clean line and
+// a non-zero exit code, not a raw Node stack trace. Commands that succeed or
+// fail normally call process.exit() inside their action and never reach here.
+try {
+  await program.parseAsync(process.argv);
+} catch (err) {
+  process.stderr.write(`superspecs: ${toMessage(err)}\n`);
+  process.exit(1);
+}

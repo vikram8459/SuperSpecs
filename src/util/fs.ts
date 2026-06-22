@@ -1,14 +1,27 @@
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { toMessage } from './errors.js';
+
+/**
+ * Read and parse a JSON file, turning a parse failure into a clean,
+ * file-attributed Error instead of a bare `SyntaxError: Unexpected token`
+ * with no path. Callers that read user-controlled JSON should use this so
+ * the top-level error boundary can print an actionable single-line message.
+ */
+export function readJsonFile<T = unknown>(path: string): T {
+  const raw = readFileSync(path, 'utf8');
+  try {
+    return JSON.parse(raw) as T;
+  } catch (err) {
+    const reason = toMessage(err);
+    const posix = path.replace(/\\/g, '/');
+    throw new Error(`${posix}: invalid JSON: ${reason}`);
+  }
+}
 
 export function mkdirpSafe(p: string): void {
   if (!existsSync(p)) {
     mkdirSync(p, { recursive: true });
   }
-}
-
-export function isEmptyDir(p: string): boolean {
-  if (!existsSync(p)) return true;
-  return readdirSync(p).length === 0;
 }
 
 export function writeIfAbsent(p: string, body: string): boolean {

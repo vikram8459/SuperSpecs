@@ -8,34 +8,58 @@ export interface CliError {
   message: string;
 }
 
+/** Code used when no rule in the table matches an ajv error. */
+export const UNMAPPED_CODE = 'SDD999';
+
 /**
- * Map an ajv ErrorObject onto an SDD<NNN> code. See
- * `schemas/README.md` for the full registry.
+ * Declarative rules mapping an ajv {@link ErrorObject} to an SDD<NNN> code.
+ * Each rule matches on the `keyword` plus EITHER an exact `instancePath`,
+ * a path `suffix`, or (for `required` errors, which report the parent path)
+ * the `missingProperty`. Rules are evaluated in order; the first match wins.
+ * A table is easier to audit and unit-test exhaustively than the previous
+ * if-ladder. See `schemas/README.md` for the full registry.
  */
-function pathToCode(e: ErrorObject): string {
+interface CodeRule {
+  code: string;
+  keyword: string;
+  path?: string;
+  suffix?: string;
+  missingProperty?: string;
+}
+
+const CODE_RULES: readonly CodeRule[] = [
   // Spec-delta family (SDD001-099)
-  if (e.instancePath.endsWith('/scenarios') && e.keyword === 'minItems') return 'SDD001';
-  if (e.instancePath.endsWith('/then') && e.keyword === 'minLength') return 'SDD002';
-  if (e.instancePath.endsWith('/given') && e.keyword === 'minLength') return 'SDD003';
-  if (e.instancePath.endsWith('/when') && e.keyword === 'minLength') return 'SDD004';
+  { code: 'SDD001', keyword: 'minItems', suffix: '/scenarios' },
+  { code: 'SDD002', keyword: 'minLength', suffix: '/then' },
+  { code: 'SDD003', keyword: 'minLength', suffix: '/given' },
+  { code: 'SDD004', keyword: 'minLength', suffix: '/when' },
 
   // Tasks family (SDD010-019)
-  if (e.instancePath.endsWith('/specRefs') && e.keyword === 'minItems') return 'SDD010';
-  if (e.instancePath.endsWith('/files') && e.keyword === 'minItems') return 'SDD011';
-  if (e.instancePath === '/tasks' && e.keyword === 'minItems') return 'SDD012';
+  { code: 'SDD010', keyword: 'minItems', suffix: '/specRefs' },
+  { code: 'SDD011', keyword: 'minItems', suffix: '/files' },
+  { code: 'SDD012', keyword: 'minItems', path: '/tasks' },
 
   // Proposal family (SDD100-199)
-  if (e.keyword === 'required') {
-    const missing = (e.params as { missingProperty?: string }).missingProperty;
-    if (missing === 'why') return 'SDD100';
-    if (missing === 'impact') return 'SDD102';
-    if (missing === 'title') return 'SDD103';
-  }
-  if (e.instancePath === '/sections/whatChanges' && e.keyword === 'minItems') return 'SDD101';
-  if (e.instancePath === '/title' && e.keyword === 'minLength') return 'SDD103';
+  { code: 'SDD100', keyword: 'required', missingProperty: 'why' },
+  { code: 'SDD102', keyword: 'required', missingProperty: 'impact' },
+  { code: 'SDD103', keyword: 'required', missingProperty: 'title' },
+  { code: 'SDD101', keyword: 'minItems', path: '/sections/whatChanges' },
+  { code: 'SDD103', keyword: 'minLength', path: '/title' },
+];
 
-  // Catch-all for unmapped failure modes.
-  return 'SDD999';
+/**
+ * Map an ajv ErrorObject onto an SDD<NNN> code via {@link CODE_RULES}.
+ */
+export function pathToCode(e: ErrorObject): string {
+  const missing = (e.params as { missingProperty?: string } | undefined)?.missingProperty;
+  for (const r of CODE_RULES) {
+    if (r.keyword !== e.keyword) continue;
+    if (r.path !== undefined && e.instancePath !== r.path) continue;
+    if (r.suffix !== undefined && !e.instancePath.endsWith(r.suffix)) continue;
+    if (r.missingProperty !== undefined && missing !== r.missingProperty) continue;
+    return r.code;
+  }
+  return UNMAPPED_CODE;
 }
 
 export function ajvToCliErrors(
