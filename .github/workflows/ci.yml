@@ -1,0 +1,85 @@
+name: ci
+
+# Full source gate: build, lint, and test on every PR and on pushes to main.
+# This complements skill-evals.yml (which is scoped to skills/eval paths and
+# is replay-only) by ensuring pure src/ changes (parser, archive, schema, CLI)
+# can never merge without compiling, linting, and passing the test suite.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-lint-test:
+    name: build, lint, test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The framework ships PowerShell (Windows) and bash (POSIX) hooks
+        # plus platform-specific test branches, so both OSes must run. Two
+        # supported Node majors guard against version drift.
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      # Enforce the coverage gate once (ubuntu, Node 20); the other matrix
+      # legs run the plain suite to validate cross-platform behaviour without
+      # paying for coverage instrumentation four times.
+      - name: Test (with coverage gate)
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        run: npm run test:coverage
+      - name: Test
+        if: '!(matrix.os == ''ubuntu-latest'' && matrix.node == ''20'')'
+        run: npm test
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      # Fail only on high/critical PRODUCTION advisories. Dev-only advisories
+      # (e.g. the accepted VITEST-RISK in TODO.md) are surfaced but do not
+      # block, since they are not in the published tarball.
+      - name: Audit production dependencies (high+)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Audit all dependencies (informational)
+        run: npm audit || true
+
+  # Require a CHANGELOG.md entry for any PR that changes user-facing code
+  # (src/ or schemas/). Docs/skills-only PRs are exempt. Pull-request only;
+  # never runs on push.
+  changelog:
+    name: changelog updated
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require CHANGELOG update for src/ or schemas/ changes
+        run: |
+          base="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          changed="$(git diff --name-only "$base"...HEAD)"
+          echo "Changed files:"
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(src|schemas)/'; then
+            if ! echo "$changed" | grep -qx 'CHANGELOG.md'; then
+              echo "::error::This PR changes src/ or schemas/ but does not update CHANGELOG.md. Add an entry under the '## [Unreleased]' section."
+              exit 1
+            fi
+          fi
+          echo "changelog check passed"
