@@ -71,4 +71,19 @@ describe('eval subcommand', () => {
     expect(r.status).not.toBe(0);
     expect(r.stderr).toMatch(/\[INVALID\].*a\.eval\.json/);
   });
+
+  it('scenario: syntactically broken JSON yields a clean file-attributed error, not a stack trace', () => {
+    // GIVEN an eval file that is not valid JSON at all
+    const dir = corpus();
+    writeFileSync(join(dir, 'tests', 'skills', 's', 'a.eval.json'), '{ not json,, }');
+
+    // WHEN eval runs
+    const r = run(dir, ['eval']);
+
+    // THEN it exits non-zero with a single [INVALID] line naming the file and
+    //      "invalid JSON" — and never prints a raw Node stack trace.
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/\[INVALID\].*a\.eval\.json: invalid JSON/);
+    expect(r.stderr).not.toMatch(/at Object\.|node:internal|SyntaxError:.*\n\s+at /);
+  });
 });

@@ -6,7 +6,9 @@ import {
   writeIfAbsent,
   existsAndNonEmpty,
   existsAndNonEmptyExcept,
+  readJsonFile,
 } from '../util/fs.js';
+import { findRootUp } from '../util/install.js';
 
 const README_BODY = `# OpenSpec workspace
 
@@ -35,19 +37,7 @@ export interface InitOptions {
  */
 function findInstallRoot(): string | null {
   const here = dirname(fileURLToPath(import.meta.url));
-  let dir = here;
-  for (let i = 0; i < 8; i++) {
-    if (
-      existsSync(join(dir, 'docs', 'harnesses.json')) &&
-      existsSync(join(dir, '.cursor-plugin'))
-    ) {
-      return dir;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return null;
+  return findRootUp(here, [join('docs', 'harnesses.json'), '.cursor-plugin']);
 }
 
 interface HarnessEntry {
@@ -60,7 +50,7 @@ interface HarnessEntry {
 
 function loadHarnessIndex(installRoot: string): HarnessEntry[] {
   const idxPath = join(installRoot, 'docs', 'harnesses.json');
-  const idx = JSON.parse(readFileSync(idxPath, 'utf8')) as { harnesses: HarnessEntry[] };
+  const idx = readJsonFile<{ harnesses: HarnessEntry[] }>(idxPath);
   return idx.harnesses;
 }
 

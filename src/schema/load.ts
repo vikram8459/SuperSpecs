@@ -1,22 +1,28 @@
-import * as AjvNs from 'ajv';
 import type { ValidateFunction } from 'ajv';
-
-// ajv (8.x) ships as CommonJS without an `exports` map; under
-// `module: nodenext` the namespace object is what `import * as`
-// yields, and the constructor is on `.default`. Cast through
-// `unknown` to keep strict mode happy. Revisit if ajv adopts an
-// ESM-native publish (see ajv-validator/ajv#1872) or we switch to
-// ajv-formats / a different validator.
-const AjvCtor = (AjvNs as unknown as {
-  default: new (opts?: Record<string, unknown>) => {
-    compile: (schema: unknown) => ValidateFunction;
-  };
-}).default;
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createAjv } from './ajv.js';
 
-const ajv = new AjvCtor({ allErrors: true, allowUnionTypes: true });
+const ajv = createAjv();
+
+/**
+ * Canonical schema filenames, single-sourced here so other modules
+ * (e.g. `doctor`) reference the same list instead of re-hardcoding it.
+ */
+export const SCHEMA_FILES = {
+  proposal: 'proposal.schema.json',
+  specDelta: 'spec-delta.schema.json',
+  tasks: 'tasks.schema.json',
+  skillEval: 'skill-eval.schema.json',
+} as const;
+
+/** Schemas that core `validate` depends on (must be present). */
+export const REQUIRED_SCHEMA_FILES: readonly string[] = [
+  SCHEMA_FILES.proposal,
+  SCHEMA_FILES.specDelta,
+  SCHEMA_FILES.tasks,
+];
 
 /**
  * Resolve a schema path. Schemas ship under `schemas/` relative to the
@@ -42,13 +48,16 @@ function schemaPath(name: string): string {
     try {
       readFileSync(candidate, 'utf8');
       return candidate;
-    } catch {
-      // Try the next candidate.
+    } catch (err) {
+      // A missing candidate is expected; try the next location. Any OTHER
+      // error (e.g. EACCES permission denied) is a real fault that would be
+      // masked by silently continuing, so surface it immediately.
+      if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err;
     }
   }
   // Nothing matched; return the cwd path so the caller's readFileSync
   // throws a clear ENOENT against a predictable location.
-  return candidates[candidates.length - 1];
+  return candidates[candidates.length - 1] ?? resolve(process.cwd(), 'schemas', name);
 }
 
 function load(name: string): ValidateFunction {
@@ -57,8 +66,8 @@ function load(name: string): ValidateFunction {
 }
 
 export const validators = {
-  proposal: load('proposal.schema.json'),
-  specDelta: load('spec-delta.schema.json'),
-  tasks: load('tasks.schema.json'),
-  skillEval: load('skill-eval.schema.json'),
+  proposal: load(SCHEMA_FILES.proposal),
+  specDelta: load(SCHEMA_FILES.specDelta),
+  tasks: load(SCHEMA_FILES.tasks),
+  skillEval: load(SCHEMA_FILES.skillEval),
 };

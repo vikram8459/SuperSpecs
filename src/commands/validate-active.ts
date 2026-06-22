@@ -33,7 +33,7 @@ function stripLeadingTitle(content: string): string {
   // first `##`+ heading so a spec without a `# ` title is left untouched
   // (rather than swallowing its first `### Requirement:` into the title).
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i] ?? '';
     if (/^#\s/.test(line) || /^#$/.test(line)) {
       return lines.slice(i + 1).join('\n');
     }
@@ -46,24 +46,27 @@ export function validateActiveContent(capability: string, content: string): Acti
   const errors: ActiveError[] = [];
   const bodyWithoutTitle = stripLeadingTitle(content);
   const wrapped = `# ${capability} — active\n\n## ADDED Requirements\n\n${bodyWithoutTitle}`;
-  const { ast, positions } = parseSpecDelta(wrapped, `${capability}/spec.md`);
+  const { ast, positions, errors: parserErrors } = parseSpecDelta(wrapped, `${capability}/spec.md`);
 
-  const seen = new Map<string, number>();
-  ast.deltas.added.forEach((req, idx) => {
-    const reqPos = positions.added[idx].position;
-    const prior = seen.get(req.name);
-    if (prior !== undefined) {
+  // Duplicate-name detection (SDD050) is owned by the parser; reuse its
+  // findings rather than re-implementing the rule here.
+  for (const pe of parserErrors) {
+    if (pe.code === 'SDD050') {
       errors.push({
         capability,
-        line: reqPos.line,
-        col: reqPos.col,
-        code: 'SDD050',
-        message: `duplicate requirement name "${req.name}"`,
+        line: pe.line,
+        col: pe.col,
+        code: pe.code,
+        message: pe.message,
       });
-    } else {
-      seen.set(req.name, reqPos.line);
     }
-    if (req.scenarios.length === 0) {
+  }
+
+  // SDD001 (requirement with no scenarios) is not a parser-level error, so
+  // it is enforced here against the parsed AST.
+  ast.deltas.added.forEach((req, idx) => {
+    const reqPos = positions.added[idx]?.position;
+    if (req.scenarios.length === 0 && reqPos) {
       errors.push({
         capability,
         line: reqPos.line,

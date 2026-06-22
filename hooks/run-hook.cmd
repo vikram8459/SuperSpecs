@@ -22,6 +22,15 @@ set "HOOK_DIR=%~dp0"
 set "SCRIPT_NAME=%~1"
 set "PS_SCRIPT=%HOOK_DIR%%SCRIPT_NAME%.ps1"
 
+REM Detect the requested harness up front so the no-PowerShell fallback
+REM below can emit the correct envelope shape (Cursor vs Claude). We scan
+REM every forwarded arg for a --harness=<name> token. Default: cursor.
+set "HARNESS=cursor"
+for %%A in (%2 %3 %4 %5 %6 %7 %8 %9) do (
+    set "ARG=%%A"
+    call :parse_harness "%%A"
+)
+
 if not exist "%PS_SCRIPT%" (
     echo superspecs: missing PowerShell script "%PS_SCRIPT%" 1>&2
     exit /b 3
@@ -42,16 +51,23 @@ if %ERRORLEVEL% equ 0 (
 )
 
 REM 3) No PowerShell at all: emit in-context warning, stderr, and log, then exit non-zero.
-REM    Emit the Cursor envelope shape unconditionally here. Harness-aware
-REM    failure messages live in session-start.ps1 itself; this fallback only
-REM    fires when the .ps1 cannot be invoked at all (no PS on Windows), at
-REM    which point the harness arg has not been parsed. Cursor users see the
-REM    intended failure; Claude users see a malformed-but-recognisable JSON
-REM    that still tells them what's wrong.
-echo {"additional_context":"<EXTREMELY_IMPORTANT>SuperSpecs SessionStart hook FAILED (F3): no PowerShell found on Windows. The 'using-superspecs' skill was NOT loaded. Diagnostic log: %%TEMP%%\superspecs-hook.log. Do NOT pretend SuperSpecs discipline is active in this session - tell the user the framework failed to load.</EXTREMELY_IMPORTANT>"}
+REM    The .ps1 could not be invoked, so we parse --harness= ourselves (above)
+REM    and emit the matching envelope shape so Claude users get well-formed
+REM    JSON in the expected wrapper rather than the Cursor shape.
+set "FAIL_MSG=<EXTREMELY_IMPORTANT>SuperSpecs SessionStart hook FAILED (F3): no PowerShell found on Windows. The 'using-superspecs' skill was NOT loaded. Diagnostic log: %%TEMP%%\superspecs-hook.log. Do NOT pretend SuperSpecs discipline is active in this session - tell the user the framework failed to load.</EXTREMELY_IMPORTANT>"
+if /I "%HARNESS%"=="claude" (
+    echo {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%FAIL_MSG%"}}
+) else (
+    echo {"additional_context":"%FAIL_MSG%"}
+)
 echo superspecs: no PowerShell found; SuperSpecs context NOT injected; see %%TEMP%%\superspecs-hook.log 1>&2
 >> "%TEMP%\superspecs-hook.log" echo %DATE% %TIME%	F3	%SCRIPT_NAME%	no powershell.exe and no pwsh on PATH
 exit /b 4
+
+:parse_harness
+set "TOKEN=%~1"
+if /I "%TOKEN:~0,10%"=="--harness=" set "HARNESS=%TOKEN:~10%"
+goto :eof
 CMDBLOCK
 
 # Unix: run the named script directly (unchanged behavior).

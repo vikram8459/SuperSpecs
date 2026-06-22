@@ -20,19 +20,3 @@ export const transcriptAdapter: Adapter = {
     return Promise.resolve({ transcript: readFileSync(p, 'utf8') });
   },
 };
-
-/**
- * Prints the scenario for a human/agent to answer, then defers to the
- * recorded transcript. The live-LLM adapter (a future deliverable)
- * implements the same interface and replaces this deferral with a real
- * model call.
- */
-export const manualAdapter: Adapter = {
-  name: 'manual',
-  async resolve(evalObj, evalFilePath) {
-    process.stderr.write(
-      `\n[manual] Skill: ${evalObj.skill}\n[manual] Scenario (${evalFilePath}):\n${evalObj.scenario}\n`,
-    );
-    return transcriptAdapter.resolve(evalObj, evalFilePath);
-  },
-};

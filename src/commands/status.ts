@@ -1,52 +1,43 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { openspecPaths, listInFlightChanges, listArchived } from '../util/openspec.js';
+
+/**
+ * Count GitHub-style task checkboxes in a tasks.md body. Returns the number
+ * of open (`- [ ]`) and done (`- [x]`/`- [X]`) items. This counts checkbox
+ * state, which is intentionally distinct from `parseTasks` (which models
+ * fully-specified tasks with Spec:/Files: lines and carries no done/open
+ * state), so the two are not interchangeable.
+ */
+export function countCheckboxes(body: string): { open: number; done: number } {
+  return {
+    open: (body.match(/^- \[ \]/gm) ?? []).length,
+    done: (body.match(/^- \[[xX]\]/gm) ?? []).length,
+  };
+}
 
 export function runStatus(cwd: string): number {
-  const root = resolve(cwd);
-  const changesDir = join(root, 'openspec', 'changes');
-  const archiveDir = join(changesDir, 'archive');
+  const paths = openspecPaths(cwd);
 
-  let inFlight: { name: string; mtime: number }[] = [];
-  if (existsSync(changesDir)) {
-    inFlight = readdirSync(changesDir)
-      .filter((n) => n !== 'archive')
-      .filter((n) => {
-        try {
-          return statSync(join(changesDir, n)).isDirectory();
-        } catch {
-          return false;
-        }
-      })
-      .map((n) => ({ name: n, mtime: statSync(join(changesDir, n)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime);
-  }
+  const inFlight = listInFlightChanges(cwd)
+    .map((name) => ({ name, mtime: statSync(join(paths.changes, name)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
 
-  if (inFlight.length === 0) {
+  const first = inFlight[0];
+  if (!first) {
     process.stdout.write('No in-flight change.\n');
   } else {
-    const top = inFlight[0].name;
+    const top = first.name;
     process.stdout.write(`Current change: ${top}\n`);
-    const tasksPath = join(changesDir, top, 'tasks.md');
+    const tasksPath = join(paths.changes, top, 'tasks.md');
     if (existsSync(tasksPath)) {
-      const t = readFileSync(tasksPath, 'utf8');
-      const open = (t.match(/^- \[ \]/gm) ?? []).length;
-      const done = (t.match(/^- \[x\]/gm) ?? []).length;
+      const { open, done } = countCheckboxes(readFileSync(tasksPath, 'utf8'));
       process.stdout.write(`Tasks: ${done} done, ${open} open\n`);
     }
   }
 
-  if (existsSync(archiveDir)) {
-    const archived = readdirSync(archiveDir)
-      .filter((n) => {
-        try {
-          return statSync(join(archiveDir, n)).isDirectory();
-        } catch {
-          return false;
-        }
-      })
-      .sort()
-      .reverse();
-    if (archived[0]) process.stdout.write(`Last archive: ${archived[0]}\n`);
-  }
+  const archived = listArchived(cwd);
+  const last = archived[archived.length - 1];
+  if (last) process.stdout.write(`Last archive: ${last}\n`);
   return 0;
 }

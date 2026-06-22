@@ -3,13 +3,19 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { REQUIRED_SCHEMA_FILES, SCHEMA_FILES } from '../schema/load.js';
+import { findRootUp } from '../util/install.js';
+
+/** Number of trailing hook-log lines surfaced by `doctor`. */
+const HOOK_LOG_TAIL_LINES = 20;
+/** Accepted values for the SUPERSPECS_MODE knob. */
+const VALID_MODES = ['strict', 'auto', 'manual'];
 
 function pluginRoot(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  // dist/commands/doctor.js -> repo root is two levels up from dist/commands.
-  const candidate = resolve(here, '..', '..');
-  if (existsSync(join(candidate, 'package.json'))) return candidate;
-  return process.cwd();
+  // dist/commands/doctor.js -> repo root is the nearest ancestor with a
+  // package.json (two levels up in the normal layout).
+  return findRootUp(here, ['package.json']) ?? process.cwd();
 }
 
 interface Check {
@@ -32,7 +38,7 @@ function hookLogTail(): string {
   const logPath = join(tmpdir(), 'superspecs-hook.log');
   if (!existsSync(logPath)) return 'hook log: absent';
   const lines = readFileSync(logPath, 'utf8').split(/\r?\n/).filter(Boolean);
-  return ['hook log (last 20 lines):', ...lines.slice(-20)].join('\n');
+  return [`hook log (last ${HOOK_LOG_TAIL_LINES} lines):`, ...lines.slice(-HOOK_LOG_TAIL_LINES)].join('\n');
 }
 
 function powershellVersion(): string | null {
@@ -61,7 +67,6 @@ export function runDoctor(root?: string): number {
   // unrecognized value. Informational only (required: false) — it never
   // changes the exit code, but it surfaces typos like SUPERSPECS_MODE=stict
   // that would otherwise silently fall back to auto.
-  const VALID_MODES = ['strict', 'auto', 'manual'];
   const rawMode = process.env.SUPERSPECS_MODE;
   const modeKnown = rawMode === undefined || VALID_MODES.includes(rawMode);
   const modeDetail =
@@ -94,8 +99,8 @@ export function runDoctor(root?: string): number {
     },
   ];
 
-  // The three core schemas are required (validate depends on them).
-  for (const name of ['proposal.schema.json', 'spec-delta.schema.json', 'tasks.schema.json']) {
+  // The core schemas are required (validate depends on them).
+  for (const name of REQUIRED_SCHEMA_FILES) {
     const p = join(base, 'schemas', name);
     const ok = existsSync(p);
     checks.push({
@@ -111,10 +116,10 @@ export function runDoctor(root?: string): number {
   // Surfacing it here means a missing eval schema is visible in `doctor`
   // rather than only blowing up at eval time (schema/load.ts requires it).
   {
-    const p = join(base, 'schemas', 'skill-eval.schema.json');
+    const p = join(base, 'schemas', SCHEMA_FILES.skillEval);
     const ok = existsSync(p);
     checks.push({
-      label: 'schema: skill-eval.schema.json',
+      label: `schema: ${SCHEMA_FILES.skillEval}`,
       ok,
       detail: ok ? schemaDraft(p) : 'missing (needed by `superspecs eval`)',
       required: false,

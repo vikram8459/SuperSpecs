@@ -20,6 +20,12 @@ function initRepo(): string {
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
   execFileSync('git', ['config', 'user.email', 't@e.com'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 'T'], { cwd: dir });
+  // Pin line-ending handling locally so the repo's clean/dirty state does not
+  // depend on the developer's global git config (e.g. core.autocrlf=true on
+  // Windows would report LF-authored fixtures as modified, flaking the
+  // clean-tree gate under parallel load).
+  execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: dir });
+  execFileSync('git', ['config', 'core.safecrlf', 'false'], { cwd: dir });
   cpSync(SCHEMAS, join(dir, 'schemas'), { recursive: true });
   // Mirror the real repo: snapshots are local recovery state, gitignored.
   writeFileSync(join(dir, '.gitignore'), 'openspec/.snapshots/\n');

@@ -1,13 +1,17 @@
 import fg from 'fast-glob';
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { validators } from '../schema/load.js';
+import { readJsonFile } from '../util/fs.js';
+import { toMessage } from '../util/errors.js';
 import { transcriptAdapter } from '../eval/adapters.js';
 import { runOneEval } from '../eval/run.js';
 import type { SkillEval } from '../eval/types.js';
 
+/** Default glob for skill eval files when none is supplied on the CLI. */
+const DEFAULT_EVAL_GLOB = 'tests/skills/**/*.eval.json';
+
 export async function runEval(cwd: string, glob?: string): Promise<number> {
-  const pattern = glob ?? 'tests/skills/**/*.eval.json';
+  const pattern = glob ?? DEFAULT_EVAL_GLOB;
   const files = fg.sync(pattern, { cwd: resolve(cwd), absolute: false });
 
   if (files.length === 0) {
@@ -17,7 +21,15 @@ export async function runEval(cwd: string, glob?: string): Promise<number> {
 
   let anyFailed = false;
   for (const file of files.sort()) {
-    const raw = JSON.parse(readFileSync(resolve(cwd, file), 'utf8')) as SkillEval;
+    let raw: SkillEval;
+    try {
+      raw = readJsonFile<SkillEval>(resolve(cwd, file));
+    } catch (err) {
+      anyFailed = true;
+      const reason = toMessage(err);
+      process.stderr.write(`[INVALID] ${file}: ${reason}\n`);
+      continue;
+    }
     if (!validators.skillEval(raw)) {
       anyFailed = true;
       process.stderr.write(`[INVALID] ${file}: does not match skill-eval schema\n`);

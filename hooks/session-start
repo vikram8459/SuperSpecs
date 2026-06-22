@@ -62,8 +62,10 @@ write_hook_log() {
   } 2>/dev/null || true
 }
 
-using_superspecs_content=$(cat "${PLUGIN_ROOT}/skills/using-superspecs/SKILL.md" 2>&1 || echo "Error reading using-superspecs skill")
-
+# Escape an arbitrary string into a JSON string body (no surrounding
+# quotes). Backslash MUST be escaped first so subsequent escapes are not
+# doubled. The result is only ever emitted via `printf '%s'`, never as a
+# printf FORMAT, so a literal `%` in the skill body cannot be reinterpreted.
 escape_for_json() {
     local s="$1"
     s="${s//\\/\\\\}"
@@ -74,24 +76,62 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
+# Emit one JSON object for $HARNESS wrapping the already-JSON-escaped
+# $1 as the context text. The escaped text is interpolated into a shell
+# variable and printed with `%s` so its bytes are never treated as a
+# printf format string.
+emit_envelope() {
+    local escaped="$1"
+    local json
+    case "$HARNESS" in
+      claude)
+        json="{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"${escaped}\"}}"
+        ;;
+      cursor|*)
+        json="{\"additional_context\":\"${escaped}\"}"
+        ;;
+    esac
+    printf '%s\n' "$json"
+}
+
+# Structured failure envelope (parity with the PowerShell hook's F4 path):
+# tell the agent the framework did NOT load rather than silently embedding
+# an error string as if it were the skill.
+emit_failure() {
+    local code="$1" reason="$2" escaped
+    escaped=$(escape_for_json "<EXTREMELY_IMPORTANT>SuperSpecs SessionStart hook FAILED (${code}): ${reason}. The 'using-superspecs' skill was NOT loaded. Diagnostic log: ${LOG_PATH}. Do NOT pretend SuperSpecs discipline is active in this session - tell the user the framework failed to load.</EXTREMELY_IMPORTANT>")
+    emit_envelope "$escaped"
+}
+
+SKILL_PATH="${PLUGIN_ROOT}/skills/using-superspecs/SKILL.md"
+if [ ! -f "$SKILL_PATH" ]; then
+    write_hook_log "F4" "skill file not found: $SKILL_PATH"
+    printf 'superspecs: session-start failed (F4): skill file not found: %s; see %s\n' "$SKILL_PATH" "$LOG_PATH" >&2
+    emit_failure "F4" "skill file not found: $SKILL_PATH"
+    exit 5
+fi
+
+using_superspecs_content=$(cat "$SKILL_PATH" 2>/dev/null) || {
+    write_hook_log "F4" "unable to read skill file: $SKILL_PATH"
+    printf 'superspecs: session-start failed (F4): unable to read %s; see %s\n' "$SKILL_PATH" "$LOG_PATH" >&2
+    emit_failure "F4" "unable to read skill file: $SKILL_PATH"
+    exit 5
+}
+
+# Normalize line endings to \n so Windows and Unix emit identical payloads.
+using_superspecs_content="${using_superspecs_content//$'\r\n'/$'\n'}"
+using_superspecs_content="${using_superspecs_content//$'\r'/$'\n'}"
+
 using_superspecs_escaped=$(escape_for_json "$using_superspecs_content")
 
 # Single source of truth for the envelope TEXT (the marker block + skill body).
 # Per-harness JSON wrappers differ only in their outer shape; the inner text
 # is identical across every harness so the agent receives the same content.
-session_context="<EXTREMELY_IMPORTANT>\nYou have SuperSpecs.\n\n**Below is the full content of your 'spx:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**\n\n${using_superspecs_escaped}\n</EXTREMELY_IMPORTANT>"
+# Assemble the marker block from already-escaped pieces so the whole thing is
+# a valid JSON string body, then emit it via `%s`.
+nl='\n'
+session_context="<EXTREMELY_IMPORTANT>${nl}You have SuperSpecs.${nl}${nl}**Below is the full content of your 'spx:using-superspecs' skill - your introduction to using skills. For all other skills, read the corresponding 'skills/<skill-name>/SKILL.md' file with the Read tool when the skill becomes relevant:**${nl}${nl}${using_superspecs_escaped}${nl}</EXTREMELY_IMPORTANT>"
 
 write_hook_log "OK" "loaded"
-
-case "$HARNESS" in
-  claude)
-    # Claude Code envelope (code.claude.com/docs/en/agent-sdk/plugins).
-    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$session_context"
-    ;;
-  cursor|*)
-    # Cursor envelope (default; preserves back-compat for existing users).
-    printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
-    ;;
-esac
-
+emit_envelope "$session_context"
 exit 0
