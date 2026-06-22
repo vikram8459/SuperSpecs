@@ -21,9 +21,13 @@ emit a JSON envelope on stdout of the shape:
 
 The `<envelope>` body is the literal contents of
 `skills/using-superspecs/SKILL.md`, wrapped in an
-`<EXTREMELY_IMPORTANT>` block. The two scripts are kept byte-for-byte
-identical after LF normalization. See the in-script contract comment
-at the top of `hooks/session-start.ps1`.
+`<EXTREMELY_IMPORTANT>` block. The PowerShell and POSIX scripts are
+distinct implementations (PowerShell uses `ConvertTo-Json`; the POSIX
+hook hand-escapes and emits via `printf '%s'`) but produce
+byte-equivalent envelope *content* after LF normalization, and both
+emit a structured failure envelope (code `F4`) when the skill file
+cannot be read. See the in-script contract comment at the top of
+`hooks/session-start.ps1`.
 
 `AGENTS.md` mirrors the same payload so non-Cursor harnesses (Codex,
 Gemini, OpenCode, Claude Code) that don't run the hook still get the
@@ -194,9 +198,9 @@ The `superspecs` CLI is implemented in TypeScript (target es2022,
 module nodenext, strict mode) targeting Node.js 20.x LTS. Built
 output lives in `dist/`. Entry point at `bin/superspecs` resolves
 to `dist/superspecs.js`. Dependencies: `commander`, `ajv`,
-`ajv-errors`, `better-ajv-errors`, `gray-matter`, `fast-glob`,
-`remark`, `remark-parse`, `unist-util-visit`. Dev deps: `typescript`,
-`vitest`, `tsx`, `@types/node`, `json-schema-to-typescript`.
+`fast-glob`, `unified`, `remark-parse`, `unist-util-visit`. Dev deps:
+`typescript`, `vitest`, `tsx`, `@types/node`,
+`json-schema-to-typescript`.
 
 #### Consequences
 

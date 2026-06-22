@@ -293,6 +293,7 @@ SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end O
 
 ### OpenSpec Workflow Skills
 - **`spx:openspec-propose`** — Draft proposal, spec deltas, design, tasks
+- **`spx:openspec-validate`** — Validate an in-flight change with `superspecs validate`
 - **`spx:openspec-apply`** — Per-task: spec → implement → verify → commit
 - **`spx:openspec-archive`** — Fold completed deltas into active specs
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (tooling — 2026-06-16)
+- `.github/workflows/ci.yml` gains a `changelog` job (pull-request only) that fails any PR touching `src/` or `schemas/` without an accompanying `CHANGELOG.md` update, enforcing the existing Keep a Changelog discipline. Docs/skills-only PRs are exempt. Asserted by `tests/cli/ci-gate.test.ts`; documented in `CONTRIBUTING.md` and the PR template.
+
 ### Added (tooling — 2026-06-15)
 - ESLint 9 flat config (`eslint.config.mjs`) + `typescript-eslint` recommended rules, scoped to `src/`, `tests/`, and root config files. `npm run lint` / `npm run lint:fix` added; documented in `CONTRIBUTING.md`. The brainstorm-companion sub-package is excluded (own toolchain). Closes carry-forward CF-B2-2. (Type-checked ruleset is a deliberate follow-up.)
 
@@ -73,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial public release of SuperSpecs (tagged `v0.1.0`).
 
 ### Added
-- 15 skills under `skills/<name>/SKILL.md` covering brainstorming, OpenSpec propose/apply/archive, planning, execution (subagent or inline), code review, debugging, worktrees, branch finishing, parallel dispatch, verification before completion, and meta-skill authoring.
+- 16 skills under `skills/<name>/SKILL.md` covering brainstorming, OpenSpec propose/validate/apply/archive, planning, execution (subagent or inline), code review, debugging, worktrees, branch finishing, parallel dispatch, verification before completion, and meta-skill authoring.
 - Cursor plugin manifest at `.cursor-plugin/plugin.json`.
 - SessionStart hook (`hooks/session-start.ps1` and POSIX `hooks/session-start`) that injects `skills/using-superspecs/SKILL.md` into the session.
 - Slash commands `commands/{brainstorm,propose,write-plan,execute-plan,archive}.md`.

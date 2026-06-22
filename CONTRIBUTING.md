@@ -80,7 +80,9 @@ When a commit closes one of the numbered audit findings, tag it:
 - [ ] Skill evals (if the change touched `skills/**`) updated and
       passing.
 - [ ] `npm run lint` and `npm test` both pass.
-- [ ] `CHANGELOG.md` updated under `## [Unreleased]`.
+- [ ] `CHANGELOG.md` updated under `## [Unreleased]`. **CI enforces this**
+      for any PR that touches `src/` or `schemas/` (the `changelog` job in
+      `.github/workflows/ci.yml`); docs/skills-only PRs are exempt.
 - [ ] Any local `scripts/` tooling (not tracked) reads from
       `git config --get remote.origin.url`; no hard-coded user/repo
       strings.

@@ -163,12 +163,12 @@ A question about a UI topic is not automatically a visual question. "What does p
 If they agree to the companion, read the detailed guide before proceeding:
 `skills/brainstorming/visual-companion.md`
 
-**Setup note:** The companion is designed to run as a small local Node
-server (a sub-package under `skills/brainstorming/scripts/` with its own
-`package.json`, started via `npm install --prefix
-skills/brainstorming/scripts/` then launched). That server code is not
-yet shipped in this repo — until it lands, drive the visual companion
-manually per `skills/brainstorming/visual-companion.md` (e.g. an existing
-browser/canvas tool) rather than expecting the bundled server. See
-`docs/architecture.md` ADR-010 for the intended design rationale (uses
-the `ws` package, not a hand-rolled WebSocket implementation).
+**Setup note:** The companion runs as a small local Node server (a
+sub-package under `skills/brainstorming/scripts/` with its own
+`package.json`). Install its dependencies once with `npm install
+--prefix skills/brainstorming/scripts/`, then start it via
+`skills/brainstorming/scripts/start-server.sh` (stop with
+`stop-server.sh`). Follow `skills/brainstorming/visual-companion.md` for
+the full driving workflow. See `docs/architecture.md` ADR-010 for the
+design rationale (uses the `ws` package, not a hand-rolled WebSocket
+implementation).
