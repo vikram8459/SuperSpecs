@@ -19,6 +19,13 @@ function initRepo(): string {
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: dir });
+  // Pin line-ending handling locally so the repo's clean/dirty state does not
+  // depend on the developer's global git config. With core.autocrlf=true
+  // (the Windows default), LF-authored fixtures get reported as modified by
+  // `git status --porcelain`, which made `gitIsClean` flip to "dirty" under
+  // parallel load — a classic racy-index + autocrlf interaction.
+  execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: dir });
+  execFileSync('git', ['config', 'core.safecrlf', 'false'], { cwd: dir });
   // The CLI loads schemas via schemaPath; copy them in so the
   // process.cwd() fallback resolves correctly inside the temp repo.
   cpSync(SCHEMAS_SRC, join(dir, 'schemas'), { recursive: true });
