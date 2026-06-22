@@ -14,7 +14,7 @@ export function readJsonFile<T = unknown>(path: string): T {
   } catch (err) {
     const reason = toMessage(err);
     const posix = path.replace(/\\/g, '/');
-    throw new Error(`${posix}: invalid JSON: ${reason}`);
+    throw new Error(`${posix}: invalid JSON: ${reason}`, { cause: err });
   }
 }
 

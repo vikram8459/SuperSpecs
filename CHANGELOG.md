@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (dev tooling — 2026-06-22)
+- Bumped the dev-tooling dependency group (ESLint 9→10, `@eslint/js` 9→10, `typescript` 5→6, `@types/node` 20→26, `vitest`/`@vitest/coverage-v8` 3→4, `json-schema-to-typescript` 14→15, `typescript-eslint` 8.61→8.62, `tsx` 4.22.3→4.22.4) via Dependabot (#18).
+- `src/util/fs.ts`: `readJsonFile` now attaches the original error as `cause` when re-throwing the file-attributed JSON parse error, satisfying ESLint 10's new `preserve-caught-error` rule and preserving the underlying error chain.
+- `engines.node` raised from `>=20.0.0` to `>=20.19.0` to match the floor required by Vitest 4 / Vite 8 (the older 20.x line cannot load the rolldown native binding).
+
 ### Added (tooling — 2026-06-16)
 - `.github/workflows/ci.yml` gains a `changelog` job (pull-request only) that fails any PR touching `src/` or `schemas/` without an accompanying `CHANGELOG.md` update, enforcing the existing Keep a Changelog discipline. Docs/skills-only PRs are exempt. Asserted by `tests/cli/ci-gate.test.ts`; documented in `CONTRIBUTING.md` and the PR template.
 
