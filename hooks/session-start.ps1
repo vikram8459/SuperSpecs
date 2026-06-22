@@ -1,6 +1,8 @@
 # SessionStart hook for SuperSpecs (Windows / PowerShell sibling of hooks/session-start).
 #
-# Contract (MUST match hooks/session-start byte-for-byte after LF normalization):
+# Contract (the POSIX sibling is a separate implementation that MUST emit
+# byte-equivalent envelope CONTENT after LF normalization, plus the same
+# F4 failure envelope on read errors):
 #   1. Parse --harness=<name> from args (default: cursor).
 #   2. Read <plugin_root>/skills/using-superspecs/SKILL.md as UTF-8.
 #   3. Wrap content in the <EXTREMELY_IMPORTANT> envelope below.
