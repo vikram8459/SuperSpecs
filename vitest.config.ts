@@ -43,10 +43,17 @@ export default defineConfig({
       // Floor for the IN-PROCESS-tested core (parser, schema, util helpers).
       // The suite currently clears this comfortably; ratchet upward over
       // time rather than starting unattainably high.
+      //
+      // `branches` is set lower than the others because Vitest 4's V8
+      // provider switched to AST-based remapping (more accurate than the
+      // prior v8-to-istanbul mapping), which recomputed branch coverage
+      // from ~75% down to ~64% with no change to the tests themselves.
+      // 60 is a floor below the current measured value; ratchet it back up
+      // as branch coverage is added, with the goal of returning to 75.
       thresholds: {
         lines: 75,
         functions: 75,
-        branches: 75,
+        branches: 60,
         statements: 75,
       },
     },
