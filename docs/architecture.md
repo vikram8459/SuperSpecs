@@ -196,24 +196,23 @@ strings.
 
 The `superspecs` CLI is implemented in TypeScript (target es2022,
 module nodenext, strict mode) targeting Node.js 20.x LTS. Built
-output lives in `dist/`. Entry point at `bin/superspecs` resolves
+output lives in `dist/`. The published `bin` entry (`superspecs`) maps
 to `dist/superspecs.js`. Dependencies: `commander`, `ajv`,
 `fast-glob`, `unified`, `remark-parse`, `unist-util-visit`. Dev deps:
-`typescript`, `vitest`, `tsx`, `@types/node`,
-`json-schema-to-typescript`.
+`typescript`, `vitest`, `@types/node`.
 
 #### Consequences
 
 - Contributors need Node 20.x on `PATH` to run `npm install`,
   `npm run build`, `npm test`.
-- Mirrors OpenSpec's `bin/`, `src/`, `schemas/`, `vitest.config.ts`
+- Mirrors OpenSpec's `src/`, `schemas/`, `vitest.config.ts`
   layout, so patterns transfer 1:1.
 - `npm publish` as `@superspecs/cli` (Finding 1.7) is one
   command. Package name fallback `superspecs-cli` if scoped name
   unavailable (decision recorded in ADR-007 if needed).
-- TypeScript types are co-generated from the JSON Schemas via
-  `json-schema-to-typescript` (see ADR-006), giving compile-time
-  alignment between schemas and parser ASTs.
+- Parser AST types (`ProposalAst`, `SpecDeltaAst`, etc.) are
+  hand-written and kept aligned with the JSON Schemas by tests (see
+  ADR-006), rather than code-generated.
 
 #### Alternatives Considered
 
@@ -336,7 +335,7 @@ it lives inside the SuperSpecs repo as a local-only helper.
 - The visual companion gains a real test suite (`npm test` inside
   `skills/brainstorming/scripts/`), which gates regressions.
 - A single new runtime dependency (`ws`) is introduced, but only for
-  users who actually run the visual companion. The CLI (`bin/superspecs`)
+  users who actually run the visual companion. The CLI (`superspecs`)
   is unaffected and keeps its current dependency set.
 - The external contract is preserved: same env vars (`BRAINSTORM_PORT`,
   `BRAINSTORM_HOST`, `BRAINSTORM_URL_HOST`, `BRAINSTORM_DIR`,
@@ -408,7 +407,7 @@ Concretely:
 - `.claude-plugin/plugin.json` + `hooks/hooks-claude.json` — Claude Code.
 - `gemini-extension.json` at root, `contextFileName: AGENTS.md` — Gemini.
 - `AGENTS.md` at root — Codex + OpenCode + agents.md spec.
-- Shared `skills/`, `commands/`, `hooks/`, `bin/superspecs` — same content
+- Shared `skills/`, `commands/`, `hooks/`, `superspecs` CLI — same content
   serves every harness.
 
 Hooks: only Cursor and Claude Code invoke a SessionStart hook. The

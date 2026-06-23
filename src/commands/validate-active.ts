@@ -9,16 +9,6 @@ export interface ActiveError {
 }
 
 /**
- * Validate the active content for one capability against the structural
- * rules: no duplicate requirement names, and every requirement has at
- * least one scenario.
- *
- * Active spec files use the same `### Requirement:` / `#### Scenario:`
- * grammar as a delta's `## ADDED Requirements` section. We wrap the body
- * under an ADDED heading and reuse `parseSpecDelta` so requirement and
- * scenario nodes (with positions) are produced.
- */
-/**
  * Strip the leading `# <title>` heading (and anything before it, such as
  * blank lines or YAML front-matter) so the remaining body can be wrapped
  * under a synthetic `## ADDED Requirements` heading. Anchors on the first

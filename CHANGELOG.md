@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (hygiene cleanup — 2026-06-23)
+- Removed unused devDependencies `json-schema-to-typescript` and `tsx` (not referenced by any script, source, or config). ADR-005 amended: parser AST types are hand-written and kept aligned with the JSON Schemas by tests, not code-generated.
+- `package.json`: removed the stale `bin/` entry from the `files` publish array (the published binary is `dist/superspecs.js` via the `bin` map) and the broken `release` script that pointed to a non-existent `scripts/release.ps1`.
+- `src/commands/validate-active.ts`: removed an orphaned JSDoc block that documented `validateActiveContent` but sat above `stripLeadingTitle` (no behavior change).
+- Docs: corrected stale `bin/superspecs` references in `docs/architecture.md` and `schemas/README.md` to the actual `superspecs` CLI entry point.
+
 ### Changed (dev tooling — 2026-06-22)
 - Bumped the dev-tooling dependency group (ESLint 9→10, `@eslint/js` 9→10, `typescript` 5→6, `@types/node` 20→26, `vitest`/`@vitest/coverage-v8` 3→4, `json-schema-to-typescript` 14→15, `typescript-eslint` 8.61→8.62, `tsx` 4.22.3→4.22.4) via Dependabot (#18).
 - `src/util/fs.ts`: `readJsonFile` now attaches the original error as `cause` when re-throwing the file-attributed JSON parse error, satisfying ESLint 10's new `preserve-caught-error` rule and preserving the underlying error chain.

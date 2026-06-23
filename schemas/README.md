@@ -2,7 +2,7 @@
 
 These schemas validate the parsed-AST shape of OpenSpec markdown
 artefacts. They are produced and consumed by the `superspecs` CLI
-(see `bin/superspecs validate`) and by IDE tooling via `$schema`
+(see `superspecs validate`) and by IDE tooling via `$schema`
 references.
 
 ## Files
