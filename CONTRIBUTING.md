@@ -29,8 +29,10 @@ See `docs/skill-authoring.md` for the conventions:
 - Red-Green-Refactor is a **skill-authoring meta-process only** — do
   not generalize it to production code workflows.
 
-Skill changes that affect behaviour must come with an eval. The full
-eval runner and corpus land in Phase C / Finding 4; until then, follow
+Skill changes that affect behaviour must come with an eval. The eval
+runner ships as `superspecs eval` and the corpus lives under
+`tests/skills/` (see the Running Evals section below). For interactive,
+subagent-driven testing while developing a skill, also see
 `skills/writing-skills/testing-skills-with-subagents.md`.
 
 ## Building, testing, and linting

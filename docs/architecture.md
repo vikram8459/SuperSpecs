@@ -2,10 +2,11 @@
 
 ## Overview
 
-SuperSpecs is a Cursor plugin (today; multi-tool in scope per Finding 2
-of the 2026-05-26 audit) that injects **Spec-Driven Development (SDD)**
-discipline into an agent session via a `SessionStart` hook and a set of
-`SKILL.md` files the agent loads on demand.
+SuperSpecs is a multi-harness plugin (Cursor, Claude Code, Codex,
+OpenCode, and Gemini — see ADR-011) that injects **Spec-Driven
+Development (SDD)** discipline into an agent session via a
+`SessionStart` hook and a set of `SKILL.md` files the agent loads on
+demand.
 
 The spec — not a failing test — is the source of truth. Every task
 either implements a delta in the spec, or it shouldn't be in the plan.

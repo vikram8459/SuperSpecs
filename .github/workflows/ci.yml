@@ -51,8 +51,8 @@ jobs:
           cache: npm
       - run: npm ci
       # Fail only on high/critical PRODUCTION advisories. Dev-only advisories
-      # (e.g. the accepted VITEST-RISK in TODO.md) are surfaced but do not
-      # block, since they are not in the published tarball.
+      # (build/test tooling such as vitest) are surfaced but do not block,
+      # since they are not in the published tarball.
       - name: Audit production dependencies (high+)
         run: npm audit --omit=dev --audit-level=high
       - name: Audit all dependencies (informational)
