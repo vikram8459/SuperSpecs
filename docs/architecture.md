@@ -298,7 +298,7 @@ environment variable is reserved but inert — no code reads it.
 #### Consequences
 
 - The tool never talks to the network as a side effect of normal use; a
-  privacy-first posture is the default and a feature for an alpha dev tool.
+  privacy-first posture is the default and a feature for a developer tool.
 - No collector, endpoint, or data-retention policy to build or maintain.
 
 #### Revisiting

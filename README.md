@@ -1,12 +1,11 @@
 # SuperSpecs
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Cursor](https://img.shields.io/badge/Cursor-Plugin-000?logo=cursor)](https://cursor.com)
-[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](#status)
+[![Harnesses: 5 supported](https://img.shields.io/badge/harnesses-Cursor%20%7C%20Claude%20Code%20%7C%20Codex%20%7C%20OpenCode%20%7C%20Gemini-000)](#installation)
 
-> **A Spec-Driven Development (SDD) skills framework.** Built around the OpenSpec workflow. The methodology and skill set are tool-agnostic; today the framework ships as a Cursor plugin.
+> **A Spec-Driven Development (SDD) skills framework.** Built around the OpenSpec workflow. The methodology and skill set are tool-agnostic; the framework ships for five harnesses: Cursor, Claude Code, OpenAI Codex CLI, OpenCode, and Gemini CLI.
 
-Instead of jumping straight into code, your Cursor agent steps back, asks what you're really trying to build, captures the answer as an **OpenSpec change** (proposal, spec deltas, design, tasks), then implements task-by-task with each scenario verified against the spec.
+Instead of jumping straight into code, your agent steps back, asks what you're really trying to build, captures the answer as an **OpenSpec change** (proposal, spec deltas, design, tasks), then implements task-by-task with each scenario verified against the spec.
 
 **The spec — not a failing test — is the source of truth.**
 
@@ -342,7 +341,7 @@ SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end O
 
 ## Status
 
-**Alpha.** Actively used and refined. Skill names, hook contracts, and folder layouts may change before a 1.0 tag. Issues and PRs welcome — open an [issue](https://github.com/vikram8459/SuperSpecs/issues) if a skill misfires or a workflow needs sharpening.
+Actively used and refined across all five supported harnesses. Skill names, hook contracts, and folder layouts may still evolve before a 1.0 tag. Issues and PRs welcome — open an [issue](https://github.com/vikram8459/SuperSpecs/issues) if a skill misfires or a workflow needs sharpening.
 
 ## License
 
