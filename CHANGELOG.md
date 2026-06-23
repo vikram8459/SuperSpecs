@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-06-23
+
+First stable release. Consolidates the multi-harness support, eval
+runner, and archive-safety work delivered since `v0.1.0`, plus a round
+of repository hygiene. Five harnesses are supported: Cursor, Claude
+Code, OpenAI Codex CLI, OpenCode, and Gemini CLI.
+
 ### Changed (hygiene cleanup — 2026-06-23)
 - Removed unused devDependencies `json-schema-to-typescript` and `tsx` (not referenced by any script, source, or config). ADR-005 amended: parser AST types are hand-written and kept aligned with the JSON Schemas by tests, not code-generated.
 - `package.json`: removed the stale `bin/` entry from the `files` publish array (the published binary is `dist/superspecs.js` via the `bin` map) and the broken `release` script that pointed to a non-existent `scripts/release.ps1`.
@@ -98,5 +105,6 @@ Initial public release of SuperSpecs (tagged `v0.1.0`).
 - MIT License.
 - Initial README with badges, table of contents, Quick Start, Slash Commands section, and brownfield philosophy.
 
-[Unreleased]: https://github.com/vikram8459/SuperSpecs/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/vikram8459/SuperSpecs/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/vikram8459/SuperSpecs/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/vikram8459/SuperSpecs/releases/tag/v0.1.0

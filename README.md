@@ -341,7 +341,7 @@ SuperSpecs exposes **5 slash commands**, one per major phase of the end-to-end O
 
 ## Status
 
-Actively used and refined across all five supported harnesses. Skill names, hook contracts, and folder layouts may still evolve before a 1.0 tag. Issues and PRs welcome — open an [issue](https://github.com/vikram8459/SuperSpecs/issues) if a skill misfires or a workflow needs sharpening.
+**Stable (1.0).** Actively used and refined across all five supported harnesses. Skill names, hook contracts, and folder layouts follow [semantic versioning](https://semver.org/) — breaking changes will bump the major version. Issues and PRs welcome — open an [issue](https://github.com/vikram8459/SuperSpecs/issues) if a skill misfires or a workflow needs sharpening.
 
 ## License
 

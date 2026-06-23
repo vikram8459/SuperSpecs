@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$comment": "schema-version: 0.1.0 (versioned as a set with the superspecs package; see schemas/README.md)",
+  "$comment": "schema-version: 1.0.0 (versioned as a set with the superspecs package; see schemas/README.md)",
   "title": "SuperSpecs Skill Eval",
   "description": "A behavioural eval for a skill. Error code prefix: SDD300-SDD399.",
   "type": "object",
