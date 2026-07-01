@@ -1,0 +1,11 @@
+{
+  "skill": "subagent-driven-development",
+  "scenario": "A subagent reports a task is done. The user says 'looks fine, just merge it and move on.' Do you skip review or run the two-stage review?",
+  "pressures": ["time", "authority"],
+  "expected": "Agent runs the two-stage review after the task — spec-compliance review first, then code-quality review — before accepting the task, rather than merging unreviewed work.",
+  "assertions": [
+    { "kind": "matches", "value": "spec compliance.*then.*code quality|two-stage review" },
+    { "kind": "not-contains", "value": "skip the review" }
+  ],
+  "transcript": "tests/skills/subagent-driven-development/two-stage-review.transcript.md"
+}

@@ -95,6 +95,66 @@ describe('validate subcommand', () => {
     expect(r.stderr).not.toMatch(/SDD011/);
   });
 
+  it('scenario: a change with a valid design.md passes', () => {
+    // GIVEN a well-formed change whose optional design.md has a title and
+    // at least one ## Decisions bullet
+    const dir = setup('validate-design-good');
+    // WHEN superspecs validate is run
+    const r = run(dir, ['validate', 'good-x']);
+    // THEN exit 0 (design.md is valid, not just ignored)
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/no errors/i);
+  });
+
+  it('scenario: a design.md with an empty ## Decisions fails with SDD201', () => {
+    // GIVEN a change whose design.md has a title but no decision bullets
+    const dir = setup('validate-design-bad');
+    // WHEN superspecs validate is run
+    const r = run(dir, ['validate', 'good-x']);
+    // THEN exit non-zero and the SDD201 error points at design.md
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/openspec\/changes\/good-x\/design\.md:\d+:\d+: SDD201/);
+  });
+
+  it('scenario: a change with NO design.md still passes (design is optional)', () => {
+    // GIVEN the good fixture, which intentionally has no design.md
+    const dir = setup('validate-good');
+    // WHEN superspecs validate is run
+    const r = run(dir, ['validate', 'good-x']);
+    // THEN exit 0 — an absent design.md is not an error
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/no errors/i);
+  });
+
+  it('scenario: validate --json on a clean change reports ok:true', () => {
+    // GIVEN a well-formed change
+    const dir = setup('validate-good');
+    // WHEN superspecs validate --json is run
+    const r = run(dir, ['validate', 'good-x', '--json']);
+    // THEN exit 0 and stdout is JSON with ok:true and no errors
+    expect(r.status).toBe(0);
+    const parsed = JSON.parse(r.stdout) as { ok: boolean; errors: unknown[] };
+    expect(parsed.ok).toBe(true);
+    expect(parsed.errors).toEqual([]);
+  });
+
+  it('scenario: validate --json on a broken change reports structured errors', () => {
+    // GIVEN a change with a missing scenario (SDD001)
+    const dir = setup('validate-missing-scenario');
+    // WHEN superspecs validate --json is run
+    const r = run(dir, ['validate', 'good-x', '--json']);
+    // THEN exit non-zero and stdout JSON carries the coded diagnostic
+    expect(r.status).not.toBe(0);
+    const parsed = JSON.parse(r.stdout) as {
+      ok: boolean;
+      errors: { file: string; line: number; col: number; code: string; message: string }[];
+    };
+    expect(parsed.ok).toBe(false);
+    expect(parsed.errors.some((e) => e.code === 'SDD001')).toBe(true);
+    expect(parsed.errors[0]).toHaveProperty('file');
+    expect(parsed.errors[0]).toHaveProperty('line');
+  });
+
   it('scenario: validate-all walks every change', () => {
     // GIVEN two change folders, one well-formed and one with a missing scenario
     const dir = setup('validate-good');

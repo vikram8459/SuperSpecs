@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "schema-version: 1.0.0 (versioned as a set with the superspecs package; see schemas/README.md)",
+  "title": "OpenSpec Design AST",
+  "description": "Parsed AST of an openspec/changes/<id>/design.md file. Validated only when the file is present. Error code prefix: SDD200-SDD299.",
+  "type": "object",
+  "required": ["title", "sections"],
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The top-level # <Title> heading text. Empty/missing → SDD200."
+    },
+    "sections": {
+      "type": "object",
+      "required": ["context", "decisions", "alternatives"],
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Body of the ## Context section. Optional (may be empty)."
+        },
+        "decisions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Bullets under ## Decisions. Empty/missing → SDD201."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets under ## Alternatives Considered. Optional."
+        }
+      }
+    }
+  }
+}

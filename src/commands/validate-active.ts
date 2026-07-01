@@ -1,9 +1,15 @@
 import { parseSpecDelta } from '../parser/spec-delta.js';
+import type { Position } from '../util/diagnostics.js';
 
-export interface ActiveError {
+/**
+ * A diagnostic against the active spec set. Keyed by `capability` (not
+ * `file`) because findings are produced before a concrete file path is
+ * known and are consumed by the archive command (`planIsSafe` reads
+ * `e.capability`). The caller attaches `file` at render time via
+ * `formatError({ file, ...e })`.
+ */
+export interface ActiveError extends Position {
   capability: string;
-  line: number;
-  col: number;
   code: string;
   message: string;
 }

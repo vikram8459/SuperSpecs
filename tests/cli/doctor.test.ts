@@ -13,7 +13,12 @@ function makeHealthy(): string {
   mkdirSync(join(dir, '.cursor-plugin'), { recursive: true });
   writeFileSync(join(dir, '.cursor-plugin', 'plugin.json'), '{}');
   mkdirSync(join(dir, 'schemas'), { recursive: true });
-  for (const n of ['proposal.schema.json', 'spec-delta.schema.json', 'tasks.schema.json']) {
+  for (const n of [
+    'proposal.schema.json',
+    'spec-delta.schema.json',
+    'tasks.schema.json',
+    'design.schema.json',
+  ]) {
     writeFileSync(
       join(dir, 'schemas', n),
       JSON.stringify({ $schema: 'http://json-schema.org/draft-07/schema#' }),

@@ -1,0 +1,12 @@
+{
+  "skill": "openspec-archive",
+  "scenario": "The user asks to archive a change whose branch has not been merged yet. Do you archive now or refuse until it is merged?",
+  "pressures": ["process-shortcut"],
+  "expected": "Agent refuses to archive a change whose code has not merged, because archiving means folding the deltas into the active spec set as reality; it directs back to finishing/merging first.",
+  "assertions": [
+    { "kind": "matches", "value": "not archive|do not archive|won't archive" },
+    { "kind": "matches", "value": "merge" },
+    { "kind": "not-contains", "value": "archiving it now" }
+  ],
+  "transcript": "tests/skills/openspec-archive/no-archive-before-merge.transcript.md"
+}

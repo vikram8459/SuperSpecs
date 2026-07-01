@@ -1,12 +1,8 @@
 import type { ErrorObject } from 'ajv';
+import type { Diagnostic } from '../util/diagnostics.js';
+import { toPosix } from '../util/fs.js';
 
-export interface CliError {
-  file: string;
-  line: number;
-  col: number;
-  code: string;
-  message: string;
-}
+export type { Diagnostic } from '../util/diagnostics.js';
 
 /** Code used when no rule in the table matches an ajv error. */
 export const UNMAPPED_CODE = 'SDD999';
@@ -45,6 +41,13 @@ const CODE_RULES: readonly CodeRule[] = [
   { code: 'SDD103', keyword: 'required', missingProperty: 'title' },
   { code: 'SDD101', keyword: 'minItems', path: '/sections/whatChanges' },
   { code: 'SDD103', keyword: 'minLength', path: '/title' },
+
+  // Design family (SDD200-299). The `/sections/decisions` path is unique to
+  // the design schema, so it is safe in the shared table. Title errors
+  // (`/title`) collide with the proposal's SDD103 rule above, so design
+  // title codes are resolved separately by the design validator (see
+  // designErrorCode in commands/validate.ts) rather than added here.
+  { code: 'SDD201', keyword: 'minItems', path: '/sections/decisions' },
 ];
 
 /**
@@ -62,12 +65,19 @@ export function pathToCode(e: ErrorObject): string {
   return UNMAPPED_CODE;
 }
 
+/**
+ * Map ajv errors to CLI diagnostics. `codeOverride` lets an artifact whose
+ * instancePath collides with another schema's rule in the shared
+ * {@link CODE_RULES} table (e.g. design.md's `/title` vs proposal's SDD103)
+ * resolve its own code; returning undefined falls back to `pathToCode`.
+ */
 export function ajvToCliErrors(
   ajvErrs: ErrorObject[] | null | undefined,
   file: string,
   fallbackLine: number,
   fallbackCol: number,
-): CliError[] {
+  codeOverride?: (e: ErrorObject) => string | undefined,
+): Diagnostic[] {
   if (!ajvErrs) return [];
   return ajvErrs.map((e) => {
     const path = e.instancePath || '/';
@@ -78,15 +88,14 @@ export function ajvToCliErrors(
       file,
       line: fallbackLine,
       col: fallbackCol,
-      code: pathToCode(e),
+      code: codeOverride?.(e) ?? pathToCode(e),
       message: `${path} ${e.message ?? 'invalid'}${params}`,
     };
   });
 }
 
-export function formatError(e: CliError): string {
+export function formatError(e: Diagnostic): string {
   // Posix-style separators so editors that parse `file:line:col` get
   // a clickable path on every platform.
-  const f = e.file.replace(/\\/g, '/');
-  return `${f}:${e.line}:${e.col}: ${e.code} ${e.message}`;
+  return `${toPosix(e.file)}:${e.line}:${e.col}: ${e.code} ${e.message}`;
 }

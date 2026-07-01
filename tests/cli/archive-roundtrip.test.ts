@@ -168,4 +168,53 @@ describe('archive source-preserving round-trip', () => {
       .filter((l) => /^### Requirement:/.test(l));
     expect(realHeadings).toEqual(['### Requirement: Has Fence', '### Requirement: Second']);
   });
+
+  it('scenario: MODIFY first + last and REMOVE middle in one delta apply correctly', () => {
+    // GIVEN an active spec with three requirements in order (A, B, C). The
+    //       delta MODIFIES A and C (non-adjacent in-place edits) and REMOVES
+    //       B. This exercises the single-parse / right-to-left splice path:
+    //       all three edits are resolved against the original offsets and
+    //       must apply without corrupting each other.
+    const dir = initRepo();
+    const reqA =
+      '### Requirement: Alpha\n\nOriginal alpha body.\n\n' +
+      '#### Scenario: a\n\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n';
+    const reqB =
+      '### Requirement: Bravo\n\nOriginal bravo body.\n\n' +
+      '#### Scenario: b\n\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n';
+    const reqC =
+      '### Requirement: Charlie\n\nOriginal charlie body.\n\n' +
+      '#### Scenario: c\n\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n';
+    writeActive(dir, 'cli', `# cli\n\n${reqA}\n${reqB}\n${reqC}`);
+    writeDelta(
+      dir,
+      'multi-edit',
+      'cli',
+      '# cli — delta for multi-edit\n\n' +
+        '## MODIFIED Requirements\n\n' +
+        '### Requirement: Alpha\n\nUpdated alpha body.\n\n' +
+        '#### Scenario: a\n\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n\n' +
+        '### Requirement: Charlie\n\nUpdated charlie body.\n\n' +
+        '#### Scenario: c\n\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n\n' +
+        '## REMOVED Requirements\n\n' +
+        '### Requirement: Bravo\n\nOriginal bravo body.\n\n' +
+        '#### Scenario: b\n\n- **GIVEN** g\n- **WHEN** w\n- **THEN** t\n',
+    );
+    commitAll(dir, 'seed');
+
+    // WHEN archive runs
+    expect(run(dir, ['archive', 'multi-edit']).status).toBe(0);
+
+    // THEN Alpha and Charlie are updated, Bravo is gone, and the two
+    //      surviving requirement headings remain in their original order.
+    const out = active(dir, 'cli');
+    expect(out).toContain('Updated alpha body.');
+    expect(out).toContain('Updated charlie body.');
+    expect(out).not.toContain('Original alpha body.');
+    expect(out).not.toContain('Original charlie body.');
+    expect(out).not.toContain('### Requirement: Bravo');
+    expect(out).not.toContain('Original bravo body.');
+    const headings = out.split('\n').filter((l) => /^### Requirement:/.test(l));
+    expect(headings).toEqual(['### Requirement: Alpha', '### Requirement: Charlie']);
+  });
 });

@@ -2,6 +2,16 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { toMessage } from './errors.js';
 
 /**
+ * Normalize Windows backslash separators to posix forward slashes so that
+ * `file:line:col` references stay clickable on every platform and emitted
+ * paths are stable across OSes. Single source for the
+ * `replace(/\\/g, '/')` pattern previously inlined in fs/schema/parser.
+ */
+export function toPosix(p: string): string {
+  return p.replace(/\\/g, '/');
+}
+
+/**
  * Read and parse a JSON file, turning a parse failure into a clean,
  * file-attributed Error instead of a bare `SyntaxError: Unexpected token`
  * with no path. Callers that read user-controlled JSON should use this so
@@ -13,8 +23,7 @@ export function readJsonFile<T = unknown>(path: string): T {
     return JSON.parse(raw) as T;
   } catch (err) {
     const reason = toMessage(err);
-    const posix = path.replace(/\\/g, '/');
-    throw new Error(`${posix}: invalid JSON: ${reason}`, { cause: err });
+    throw new Error(`${toPosix(path)}: invalid JSON: ${reason}`, { cause: err });
   }
 }
 

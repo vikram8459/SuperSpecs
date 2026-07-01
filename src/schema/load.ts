@@ -14,6 +14,7 @@ export const SCHEMA_FILES = {
   proposal: 'proposal.schema.json',
   specDelta: 'spec-delta.schema.json',
   tasks: 'tasks.schema.json',
+  design: 'design.schema.json',
   skillEval: 'skill-eval.schema.json',
 } as const;
 
@@ -22,6 +23,7 @@ export const REQUIRED_SCHEMA_FILES: readonly string[] = [
   SCHEMA_FILES.proposal,
   SCHEMA_FILES.specDelta,
   SCHEMA_FILES.tasks,
+  SCHEMA_FILES.design,
 ];
 
 /**
@@ -69,5 +71,6 @@ export const validators = {
   proposal: load(SCHEMA_FILES.proposal),
   specDelta: load(SCHEMA_FILES.specDelta),
   tasks: load(SCHEMA_FILES.tasks),
+  design: load(SCHEMA_FILES.design),
   skillEval: load(SCHEMA_FILES.skillEval),
 };

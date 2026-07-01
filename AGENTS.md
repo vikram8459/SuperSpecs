@@ -1,9 +1,10 @@
 # AGENTS.md
 
-> This file mirrors the SessionStart hook payload so harnesses that load
-> `AGENTS.md` (Codex, Gemini, OpenCode, Claude Code) get the same
-> instructions Cursor receives via `hooks/session-start.ps1` /
-> `hooks/session-start`.
+> Entry point for harnesses that load `AGENTS.md` (Codex, Gemini, OpenCode)
+> instead of the SessionStart hook. It does not inline the skill payload the
+> hook injects; instead it points at the same canonical first read
+> (`skills/using-superspecs/SKILL.md`) and indexes the available skills, so
+> every harness converges on one source of truth.
 
 ## You are using SuperSpecs
 
@@ -28,22 +29,13 @@ Before responding to any request (including clarifying questions), read:
 skills/using-superspecs/SKILL.md
 ```
 
-That skill explains the triggering rules, the **Skip skills when** bypass
-clause (read-only inspection, formatting, single-line typo fixes,
-exploratory shell, direct questions), and the `SUPERSPECS_MODE` knob.
+That skill is the single source of truth for the triggering rules, the
+**Skip skills when** bypass clause, the `SUPERSPECS_MODE` knob, and the
+`spx:<skill-name>` cross-reference convention. Read it first rather than
+relying on the summary below.
 
 If a skill plausibly applies to the current task (even at 1%
 likelihood), read its `SKILL.md` with the Read tool before acting.
-
-## Cross-skill reference convention
-
-Always use the canonical form:
-
-    spx:<skill-name>
-
-Bare references are reserved for the skill's own frontmatter `name:`
-field, filenames, code blocks, and verbatim slug quotes. See
-`docs/skill-authoring.md`.
 
 ## Skill index
 
@@ -99,8 +91,9 @@ The CLI binary is `superspecs` (or `node dist/superspecs.js` before
 install). Key subcommands:
 
 - `superspecs init [--harness=<name>]` — scaffold a new SuperSpecs project.
-- `superspecs validate [<change-id>]` — validate proposal/spec-delta/tasks.
-- `superspecs validate --active` — validate the active spec set.
+- `superspecs validate [<change-id>] [--json]` — validate proposal/spec-delta/tasks/design.
+- `superspecs validate --active [--json]` — validate the active spec set.
+- `superspecs list [--json]` / `superspecs status [--json]` — inspect changes; `--json` emits machine-readable output.
 - `superspecs archive <change-id> [--dry-run|--undo]` — archive a change.
 - `superspecs doctor` — diagnostic check of installation health.
 - `superspecs eval [<glob>]` — run skill evals.

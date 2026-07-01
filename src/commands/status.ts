@@ -16,7 +16,11 @@ export function countCheckboxes(body: string): { open: number; done: number } {
   };
 }
 
-export function runStatus(cwd: string): number {
+export interface StatusOptions {
+  json?: boolean;
+}
+
+export function runStatus(cwd: string, opts: StatusOptions = {}): number {
   const paths = openspecPaths(cwd);
 
   const inFlight = listInFlightChanges(cwd)
@@ -24,20 +28,33 @@ export function runStatus(cwd: string): number {
     .sort((a, b) => b.mtime - a.mtime);
 
   const first = inFlight[0];
-  if (!first) {
-    process.stdout.write('No in-flight change.\n');
-  } else {
-    const top = first.name;
-    process.stdout.write(`Current change: ${top}\n`);
+  const top = first?.name ?? null;
+  let tasks: { done: number; open: number } | null = null;
+  if (top) {
     const tasksPath = join(paths.changes, top, 'tasks.md');
     if (existsSync(tasksPath)) {
-      const { open, done } = countCheckboxes(readFileSync(tasksPath, 'utf8'));
-      process.stdout.write(`Tasks: ${done} done, ${open} open\n`);
+      tasks = countCheckboxes(readFileSync(tasksPath, 'utf8'));
     }
   }
 
   const archived = listArchived(cwd);
-  const last = archived[archived.length - 1];
+  const last = archived[archived.length - 1] ?? null;
+
+  if (opts.json) {
+    process.stdout.write(
+      JSON.stringify({ current: top, tasks, lastArchive: last }, null, 2) + '\n',
+    );
+    return 0;
+  }
+
+  if (!top) {
+    process.stdout.write('No in-flight change.\n');
+  } else {
+    process.stdout.write(`Current change: ${top}\n`);
+    if (tasks) {
+      process.stdout.write(`Tasks: ${tasks.done} done, ${tasks.open} open\n`);
+    }
+  }
   if (last) process.stdout.write(`Last archive: ${last}\n`);
   return 0;
 }

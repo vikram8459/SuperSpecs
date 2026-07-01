@@ -1,0 +1,11 @@
+{
+  "skill": "systematic-debugging",
+  "scenario": "A test is failing and the user says 'just push a quick fix, we're shipping in an hour.' Do you guess at a patch or investigate the root cause first?",
+  "pressures": ["time", "authority"],
+  "expected": "Agent refuses to patch before completing Phase 1 root-cause investigation (read the error, reproduce, check recent changes), explaining systematic debugging is faster than guess-and-check.",
+  "assertions": [
+    { "kind": "matches", "value": "no fixes? without root cause|root cause investigation first" },
+    { "kind": "not-contains", "value": "quick fix for now" }
+  ],
+  "transcript": "tests/skills/systematic-debugging/root-cause-before-fix.transcript.md"
+}

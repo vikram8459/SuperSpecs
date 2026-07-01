@@ -1,4 +1,4 @@
-import { parseMarkdown, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
+import { parseMarkdown, flattenPhrasing, pos, type Diagnostic, type Position } from './shared.js';
 
 export interface TaskAst {
   name: string;
@@ -43,11 +43,11 @@ function cleanTaskName(raw: string): string {
 export function parseTasks(
   text: string,
   file: string,
-): { ast: TasksAst; positions: TasksPositions; errors: ParserError[] } {
+): { ast: TasksAst; positions: TasksPositions; errors: Diagnostic[] } {
   const root = parseMarkdown(text);
   const tasks: TaskAst[] = [];
   const positions: Position[] = [];
-  const errors: ParserError[] = [];
+  const errors: Diagnostic[] = [];
 
   for (const node of root.children) {
     if (node.type !== 'list') continue;

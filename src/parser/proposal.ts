@@ -1,4 +1,4 @@
-import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
+import { parseMarkdown, headingText, flattenPhrasing, pos, type Diagnostic, type Position } from './shared.js';
 import type { Heading } from 'mdast';
 
 export interface ProposalAst {
@@ -35,9 +35,9 @@ const ORIGIN: Position = { line: 1, col: 1 };
 export function parseProposal(
   text: string,
   _file: string,
-): { ast: ProposalAst; positions: ProposalPositions; errors: ParserError[] } {
+): { ast: ProposalAst; positions: ProposalPositions; errors: Diagnostic[] } {
   const root = parseMarkdown(text);
-  const errors: ParserError[] = [];
+  const errors: Diagnostic[] = [];
 
   const top = root.children.find((c): c is Heading => c.type === 'heading' && c.depth === 1);
   const title = top ? headingText(top) : '';
