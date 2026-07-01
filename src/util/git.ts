@@ -1,4 +1,5 @@
 import { execFileSync, type ExecFileSyncOptions } from 'node:child_process';
+import { toPosix } from './fs.js';
 
 function git(args: string[], opts?: ExecFileSyncOptions): string {
   return execFileSync('git', args, { encoding: 'utf8', ...(opts ?? {}) }).toString();
@@ -19,16 +20,16 @@ export function gitIsClean(cwd: string): boolean {
  */
 export function hasDirtyChangesOutside(cwd: string, prefix: string): boolean {
   const status = git(['status', '--porcelain'], { cwd });
-  const norm = prefix.replace(/\\/g, '/').replace(/\/+$/, '') + '/';
+  const norm = toPosix(prefix).replace(/\/+$/, '') + '/';
   return status
     .split('\n')
     .map((l) => l.trimEnd())
     .filter(Boolean)
     .some((line) => {
       const rest = line.slice(3);
-      const path = (rest.includes(' -> ') ? (rest.split(' -> ')[1] ?? rest) : rest)
-        .replace(/^"|"$/g, '')
-        .replace(/\\/g, '/');
+      const path = toPosix(
+        (rest.includes(' -> ') ? (rest.split(' -> ')[1] ?? rest) : rest).replace(/^"|"$/g, ''),
+      );
       return !path.startsWith(norm);
     });
 }

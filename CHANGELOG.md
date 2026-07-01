@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `design.md` validation (error prefix **SDD200–SDD299**): `superspecs validate` now checks `openspec/changes/<id>/design.md` **only when the file is present** — **SDD200** (missing/empty `# <Title>`) and **SDD201** (empty `## Decisions`). `## Context` and `## Alternatives Considered` remain optional. Adds `schemas/design.schema.json`, `src/parser/design.ts`, registration in `src/schema/load.ts` (incl. `REQUIRED_SCHEMA_FILES`), and updates `schemas/README.md`.
+- `--json` output mode for `superspecs validate` / `validate --active` / `list` / `status`, emitting structured JSON to stdout for machine/token-efficient consumption. Exit codes and human-readable text output are unchanged.
+
+### Changed
+- `computeCapabilityAfter` (archive) now parses the active spec body **once** and applies all MODIFIED/REMOVED splices in a single right-to-left sweep instead of re-parsing per requirement (was `O(reqs × parse)`). Sequential semantics preserved, including the "replace-then-delete" case for a name present in both sections.
+- Internal DRY consolidation (no behavior change): unified the duplicate `ParserError`/`CliError`/`SourcePos` shapes into `Diagnostic`/`Position` (`src/util/diagnostics.ts`); added `toPosix()` (`util/fs.ts`) for the 5 backslash-normalize sites; added `endWithSingleNewline()`/`appendBlock()` in `archive.ts`; hoisted `classifyDeltaSection()` + heading-regex constants in `spec-delta.ts`; removed the redundant `snapshotDir` alias.
+- Pinned `@types/node` from `^26.0.0` to `^20.19.0` to match `engines.node` (`>=20.19.0`).
+- `AGENTS.md`: corrected the "mirrors the hook payload" header to reflect that it is a pointer + skill index (not an inline copy), and de-duplicated the triggering-rules / `spx:` convention prose by pointing at `skills/using-superspecs/SKILL.md` as the single source of truth.
+
 ## [1.0.0] — 2026-06-23
 
 First stable release. Consolidates the multi-harness support, eval

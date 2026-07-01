@@ -5,6 +5,7 @@ const SCHEMA_PATHS = [
   'schemas/proposal.schema.json',
   'schemas/spec-delta.schema.json',
   'schemas/tasks.schema.json',
+  'schemas/design.schema.json',
 ];
 
 describe('IDE schema reference path', () => {

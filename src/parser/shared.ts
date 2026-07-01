@@ -2,19 +2,9 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { visit } from 'unist-util-visit';
 import type { Root, Heading, Text, PhrasingContent } from 'mdast';
+import type { Position } from '../util/diagnostics.js';
 
-export interface Position {
-  line: number;
-  col: number;
-}
-
-export interface ParserError {
-  file: string;
-  line: number;
-  col: number;
-  code: string;
-  message: string;
-}
+export type { Position, Diagnostic } from '../util/diagnostics.js';
 
 const processor = unified().use(remarkParse);
 

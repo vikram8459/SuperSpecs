@@ -1,4 +1,5 @@
-import { parseMarkdown, headingText, flattenPhrasing, pos, type ParserError, type Position } from './shared.js';
+import { parseMarkdown, headingText, flattenPhrasing, pos, type Diagnostic, type Position } from './shared.js';
+import { toPosix } from '../util/fs.js';
 import type { Root, Heading, List } from 'mdast';
 
 export interface ScenarioAst {
@@ -48,10 +49,37 @@ export interface SpecDeltaPositions {
 export interface SpecDeltaParseResult {
   ast: SpecDeltaAst;
   positions: SpecDeltaPositions;
-  errors: ParserError[];
+  errors: Diagnostic[];
 }
 
 type DeltaSection = 'added' | 'modified' | 'removed' | null;
+
+/** Matches a `### Requirement:` heading; capture-free prefix test + strip. */
+const REQUIREMENT_HEADING_RE = /^Requirement:\s*/i;
+/** Matches a `#### Scenario:` heading. */
+const SCENARIO_HEADING_RE = /^Scenario:\s*/i;
+
+/**
+ * Classify a `## <text>` delta-section heading into its `DeltaSection`.
+ * Shared by `extractRequirementBlocks` and `parseSpecDelta` so the section
+ * heading vocabulary lives in exactly one place.
+ */
+function classifyDeltaSection(headingTextValue: string): DeltaSection {
+  if (/^ADDED Requirements$/i.test(headingTextValue)) return 'added';
+  if (/^MODIFIED Requirements$/i.test(headingTextValue)) return 'modified';
+  if (/^REMOVED Requirements$/i.test(headingTextValue)) return 'removed';
+  return null;
+}
+
+/** True if a depth-3 heading text is a `Requirement:` heading. */
+function isRequirementHeading(headingTextValue: string): boolean {
+  return REQUIREMENT_HEADING_RE.test(headingTextValue);
+}
+
+/** Strip the `Requirement:` prefix and surrounding whitespace from a heading. */
+function requirementName(headingTextValue: string): string {
+  return headingTextValue.replace(REQUIREMENT_HEADING_RE, '').trim();
+}
 
 /**
  * A `### Requirement:` block located by source offset, with its verbatim
@@ -105,7 +133,7 @@ export function extractRequirementBlocks(source: string): RequirementBlock[] {
     const text = headingText(h);
     if (h.depth <= 2) {
       boundaries.push(off);
-    } else if (h.depth === 3 && /^Requirement:\s*/i.test(text)) {
+    } else if (h.depth === 3 && isRequirementHeading(text)) {
       boundaries.push(off);
     }
   }
@@ -126,15 +154,12 @@ export function extractRequirementBlocks(source: string): RequirementBlock[] {
     const text = headingText(h);
 
     if (h.depth === 2) {
-      if (/^ADDED Requirements$/i.test(text)) section = 'added';
-      else if (/^MODIFIED Requirements$/i.test(text)) section = 'modified';
-      else if (/^REMOVED Requirements$/i.test(text)) section = 'removed';
-      else section = null;
+      section = classifyDeltaSection(text);
       continue;
     }
 
-    if (h.depth === 3 && /^Requirement:\s*/i.test(text)) {
-      const name = text.replace(/^Requirement:\s*/i, '').trim();
+    if (h.depth === 3 && isRequirementHeading(text)) {
+      const name = requirementName(text);
       const end = nextBoundary(off);
       blocks.push({
         name,
@@ -167,7 +192,7 @@ function gwtFromList(list: List): { given: string; when: string; then: string } 
 
 export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult {
   const root: Root = parseMarkdown(text);
-  const errors: ParserError[] = [];
+  const errors: Diagnostic[] = [];
   const ast: SpecDeltaAst = {
     capability: '',
     deltas: { added: [], modified: [], removed: [] },
@@ -208,16 +233,13 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
 
       if (h.depth === 2) {
         flushReq();
-        if (/^ADDED Requirements$/i.test(text)) currentSection = 'added';
-        else if (/^MODIFIED Requirements$/i.test(text)) currentSection = 'modified';
-        else if (/^REMOVED Requirements$/i.test(text)) currentSection = 'removed';
-        else currentSection = null;
+        currentSection = classifyDeltaSection(text);
         continue;
       }
 
-      if (h.depth === 3 && currentSection && /^Requirement:\s*/i.test(text)) {
+      if (h.depth === 3 && currentSection && isRequirementHeading(text)) {
         flushReq();
-        const name = text.replace(/^Requirement:\s*/i, '').trim();
+        const name = requirementName(text);
         currentReq = {
           name,
           body: '',
@@ -227,8 +249,8 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
         continue;
       }
 
-      if (h.depth === 4 && currentReq && currentReqPos && /^Scenario:\s*/i.test(text)) {
-        const name = text.replace(/^Scenario:\s*/i, '').trim();
+      if (h.depth === 4 && currentReq && currentReqPos && SCENARIO_HEADING_RE.test(text)) {
+        const name = text.replace(SCENARIO_HEADING_RE, '').trim();
         const next = root.children[i + 1];
         const gwt =
           next && next.type === 'list'
@@ -264,7 +286,7 @@ export function parseSpecDelta(text: string, file: string): SpecDeltaParseResult
   // Normalize the path embedded in the message to posix separators so the
   // `file:line:col` reference stays clickable on Windows (mirrors
   // `formatError` in schema/errors.ts).
-  const filePosix = file.replace(/\\/g, '/');
+  const filePosix = toPosix(file);
   for (const sec of ['added', 'modified', 'removed'] as const) {
     const seen = new Map<string, Position>();
     ast.deltas[sec].forEach((r, idx) => {

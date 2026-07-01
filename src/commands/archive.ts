@@ -17,7 +17,7 @@ import {
   gitResetSoftHead1,
   hasDirtyChangesOutside,
 } from '../util/git.js';
-import { takeSnapshot, snapshotDir } from '../util/snapshot.js';
+import { takeSnapshot, snapshotPath } from '../util/snapshot.js';
 import { toMessage } from '../util/errors.js';
 import {
   openspecPaths,
@@ -41,6 +41,21 @@ function todayIso(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** Strip trailing whitespace and terminate `text` with exactly one newline. */
+function endWithSingleNewline(text: string): string {
+  return text.replace(/\s+$/, '') + '\n';
+}
+
+/**
+ * Append a verbatim block to `body`, separated by exactly one blank line:
+ * trim `body`'s trailing whitespace, then add `\n\n` and the block. Used
+ * when splicing an ADDED requirement (or an absent MODIFIED one) onto the
+ * end of the active body.
+ */
+function appendBlock(body: string, block: string): string {
+  return body.replace(/\s+$/, '') + '\n\n' + block;
+}
+
 /**
  * Normalize a verbatim requirement block lifted from a delta file so it can
  * be spliced into the active spec set: trim trailing whitespace and ensure
@@ -49,16 +64,32 @@ function todayIso(): string {
  * this is the whole point of the source-preserving splice.
  */
 function normalizeBlock(sourceText: string): string {
-  return sourceText.replace(/\s+$/, '') + '\n';
+  return endWithSingleNewline(sourceText);
 }
 
 /**
- * Find a `### Requirement: <name>` block in the (current) active body by
- * source offset, re-parsing each time so offsets stay valid after prior
- * splices. Returns null if no such requirement exists.
+ * An in-place edit against the ORIGINAL body offsets: replace
+ * `[start, end)` with `text`. A deletion is just `text === ''`.
  */
-function findActiveBlock(body: string, name: string): RequirementBlock | null {
-  return extractRequirementBlocks(body).find((b) => b.name === name) ?? null;
+interface SpliceEdit {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/**
+ * Apply a set of edits expressed against the original body offsets in one
+ * right-to-left sweep, so each splice does not invalidate the offsets of
+ * the edits still to be applied. Edits must not overlap (callers key edits
+ * by a block's original start offset, so at most one edit targets a given
+ * requirement block).
+ */
+function applyEdits(body: string, edits: SpliceEdit[]): string {
+  let out = body;
+  for (const e of [...edits].sort((a, b) => b.start - a.start)) {
+    out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  }
+  return out;
 }
 
 export interface CapabilityChange {
@@ -106,11 +137,36 @@ function computeCapabilityAfter(
     return block ? normalizeBlock(block.sourceText) : `### Requirement: ${name}\n`;
   };
 
+  // Parse the active body ONCE and resolve every in-place MODIFIED/REMOVED
+  // edit against those original offsets, instead of re-parsing the whole
+  // body for each requirement (previously O(reqs x parse)). Edits are keyed
+  // by a block's original start offset so at most one edit targets a given
+  // block; because REMOVED runs after MODIFIED, a name present in both
+  // sections resolves to a deletion (the prior replace is overwritten),
+  // exactly reproducing the old "replace in place, then delete" behaviour.
+  // Matching consumes blocks in document order so repeated names map to
+  // successive occurrences, mirroring the old `.find()`-then-mutate loop.
+  const activeBlocks = extractRequirementBlocks(body);
+  const unconsumedByName = new Map<string, RequirementBlock[]>();
+  for (const b of activeBlocks) {
+    const list = unconsumedByName.get(b.name);
+    if (list) list.push(b);
+    else unconsumedByName.set(b.name, [b]);
+  }
+  const takeBlock = (name: string): RequirementBlock | null => {
+    const list = unconsumedByName.get(name);
+    if (!list || list.length === 0) return null;
+    return list.shift() ?? null;
+  };
+
+  const editByStart = new Map<number, SpliceEdit>();
+  const appended: string[] = [];
+
   for (const req of ast.deltas.modified) {
-    const range = findActiveBlock(body, req.name);
+    const block = takeBlock(req.name);
     const rendered = deltaSource('modified', req.name);
-    if (range) {
-      body = body.slice(0, range.start) + rendered + body.slice(range.end);
+    if (block) {
+      editByStart.set(block.start, { start: block.start, end: block.end, text: rendered });
     } else {
       // MODIFIED names a requirement that does not exist in the active set.
       // This is almost always an authoring mistake (wrong name, or it
@@ -122,13 +178,15 @@ function computeCapabilityAfter(
           `for ${ast.capability}; appending it as if ADDED. Did you mean to ` +
           `ADD it, or is the name misspelled?`,
       );
-      body = body.replace(/\s+$/, '') + '\n\n' + rendered;
+      appended.push(rendered);
     }
   }
   for (const req of ast.deltas.removed) {
-    const range = findActiveBlock(body, req.name);
-    if (range) {
-      body = body.slice(0, range.start) + body.slice(range.end);
+    const block = takeBlock(req.name);
+    if (block) {
+      // Overwrites any MODIFIED edit at the same offset: replace-then-delete
+      // is a delete.
+      editByStart.set(block.start, { start: block.start, end: block.end, text: '' });
     } else {
       warnings.push(
         `REMOVED requirement "${req.name}" was not found in the active set ` +
@@ -136,10 +194,15 @@ function computeCapabilityAfter(
       );
     }
   }
+
+  body = applyEdits(body, [...editByStart.values()]);
+  // Absent-MODIFIED appends happen before ADDED appends, preserving the old
+  // ordering (MODIFIED loop ran before the ADDED loop).
+  for (const rendered of appended) body = appendBlock(body, rendered);
   for (const req of ast.deltas.added) {
-    body = body.replace(/\s+$/, '') + '\n\n' + deltaSource('added', req.name);
+    body = appendBlock(body, deltaSource('added', req.name));
   }
-  return { after: body.replace(/\s+$/, '') + '\n', warnings };
+  return { after: endWithSingleNewline(body), warnings };
 }
 
 export function buildArchivePlan(repoRoot: string, changeId: string): ArchivePlan {
@@ -188,7 +251,7 @@ export interface ArchiveOptions {
 }
 
 function runUndo(repoRoot: string, changeId: string): number {
-  const snap = snapshotDir(repoRoot, changeId);
+  const snap = snapshotPath(repoRoot, changeId);
   if (!existsSync(snap)) {
     process.stderr.write(
       `archive --undo: snapshot not found: openspec/.snapshots/${changeId}\n`,

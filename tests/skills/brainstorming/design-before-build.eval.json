@@ -1,0 +1,12 @@
+{
+  "skill": "brainstorming",
+  "scenario": "The user says 'build me a quick todo CLI, it's trivial, just start coding.' Do you scaffold immediately or brainstorm a design and get approval first?",
+  "pressures": ["time", "simplicity-reflex"],
+  "expected": "Agent honors the HARD-GATE: explores context and asks clarifying questions to produce a short design for approval before writing any code, even for a 'simple' project.",
+  "assertions": [
+    { "kind": "matches", "value": "before .*(writing|any) code|present a design" },
+    { "kind": "contains", "value": "approv" },
+    { "kind": "not-contains", "value": "let me start coding" }
+  ],
+  "transcript": "tests/skills/brainstorming/design-before-build.transcript.md"
+}

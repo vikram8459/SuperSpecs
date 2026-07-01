@@ -12,6 +12,7 @@ references.
 | `proposal.schema.json` | `openspec/changes/<id>/proposal.md` | SDD100–SDD199 |
 | `spec-delta.schema.json` | `openspec/changes/<id>/specs/<cap>/spec.md` | SDD001–SDD099 |
 | `tasks.schema.json` | `openspec/changes/<id>/tasks.md` | SDD010–SDD019 |
+| `design.schema.json` | `openspec/changes/<id>/design.md` (optional; validated only if present) | SDD200–SDD299 |
 
 ## Error code registry
 
@@ -30,9 +31,16 @@ references.
 | SDD101 | proposal | Empty `## What Changes` bullet list |
 | SDD102 | proposal | Missing `## Impact` section |
 | SDD103 | proposal | Missing or empty `# <Title>` heading |
+| SDD200 | design | Missing or empty `# <Title>` heading (only when design.md is present) |
+| SDD201 | design | Empty `## Decisions` bullet list (only when design.md is present) |
 
 The registry grows as new failure modes are formalized. Codes are
 namespaced by prefix so future phases can add safely.
+
+`design.md` is optional: a change with no `design.md` reports nothing.
+When the file IS present, it must carry a non-empty title and at least
+one `## Decisions` bullet. `## Context` and `## Alternatives Considered`
+are recommended but not required.
 
 ## Usage
 

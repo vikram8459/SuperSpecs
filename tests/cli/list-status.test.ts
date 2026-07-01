@@ -49,4 +49,40 @@ describe('list and status subcommands', () => {
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('No in-flight change.');
   });
+
+  it('scenario: list --json emits structured arrays', () => {
+    // GIVEN one in-flight change, one archived, one capability
+    const dir = mkdtempSync(join(tmpdir(), 'spx-list-json-'));
+    mkdirSync(join(dir, 'openspec', 'changes', 'add-foo'), { recursive: true });
+    mkdirSync(join(dir, 'openspec', 'changes', 'archive', '2026-05-26-bar'), { recursive: true });
+    mkdirSync(join(dir, 'openspec', 'specs', 'cli'), { recursive: true });
+
+    // WHEN `superspecs list --json` runs
+    const r = run(dir, ['list', '--json']);
+
+    // THEN stdout is parseable JSON with the three categorized arrays
+    expect(r.status).toBe(0);
+    const parsed = JSON.parse(r.stdout) as {
+      changes: string[];
+      archived: string[];
+      capabilities: string[];
+    };
+    expect(parsed.changes).toEqual(['add-foo']);
+    expect(parsed.archived).toEqual(['2026-05-26-bar']);
+    expect(parsed.capabilities).toEqual(['cli']);
+  });
+
+  it('scenario: status --json reports null current when no in-flight change', () => {
+    // GIVEN no in-flight change
+    const dir = mkdtempSync(join(tmpdir(), 'spx-status-json-'));
+    mkdirSync(join(dir, 'openspec', 'changes', 'archive'), { recursive: true });
+
+    // WHEN `superspecs status --json` runs
+    const r = run(dir, ['status', '--json']);
+
+    // THEN stdout is JSON with current: null
+    expect(r.status).toBe(0);
+    const parsed = JSON.parse(r.stdout) as { current: string | null };
+    expect(parsed.current).toBeNull();
+  });
 });

@@ -34,25 +34,32 @@ program
   .command('validate [change-id]')
   .description('validate proposal/spec-delta/tasks against schemas')
   .option('--active', 'validate the active spec set in openspec/specs/')
-  .action(async (changeId: string | undefined, opts: { active?: boolean }) => {
+  .option('--json', 'emit machine-readable JSON to stdout instead of text')
+  .action(async (changeId: string | undefined, opts: { active?: boolean; json?: boolean }) => {
     const { runValidate, runValidateActive } = await import('./commands/validate.js');
-    process.exit(opts.active ? runValidateActive(process.cwd()) : runValidate(process.cwd(), changeId));
+    process.exit(
+      opts.active
+        ? runValidateActive(process.cwd(), { json: opts.json })
+        : runValidate(process.cwd(), changeId, { json: opts.json }),
+    );
   });
 
 program
   .command('list')
   .description('list in-flight changes, archived changes, and capabilities')
-  .action(async () => {
+  .option('--json', 'emit machine-readable JSON to stdout instead of text')
+  .action(async (opts: { json?: boolean }) => {
     const { runList } = await import('./commands/list.js');
-    process.exit(runList(process.cwd()));
+    process.exit(runList(process.cwd(), { json: opts.json }));
   });
 
 program
   .command('status')
   .description('print the most recent in-flight change and task counts')
-  .action(async () => {
+  .option('--json', 'emit machine-readable JSON to stdout instead of text')
+  .action(async (opts: { json?: boolean }) => {
     const { runStatus } = await import('./commands/status.js');
-    process.exit(runStatus(process.cwd()));
+    process.exit(runStatus(process.cwd(), { json: opts.json }));
   });
 
 program
