@@ -24,72 +24,24 @@ import {
   changeDir as changeDirPath,
   capabilitySpecPath,
   loadSpecDeltas,
+  isValidChangeId,
 } from '../util/openspec.js';
 import { validateActiveContent } from './validate-active.js';
-import {
-  parseSpecDelta,
-  extractRequirementBlocks,
-  type SpecDeltaAst,
-  type RequirementBlock,
-} from '../parser/spec-delta.js';
+import { parseSpecDelta } from '../parser/spec-delta.js';
+import { computeCapabilityAfter } from './archive-splice.js';
 
+/**
+ * UTC-date `YYYY-MM-DD` used for the archive folder prefix. UTC (not local
+ * time) so the prefix is deterministic and reproducible regardless of the
+ * contributor's timezone or a CI runner's, and orders consistently against
+ * the commit timestamp.
+ */
 function todayIso(): string {
   const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
-}
-
-/** Strip trailing whitespace and terminate `text` with exactly one newline. */
-function endWithSingleNewline(text: string): string {
-  return text.replace(/\s+$/, '') + '\n';
-}
-
-/**
- * Append a verbatim block to `body`, separated by exactly one blank line:
- * trim `body`'s trailing whitespace, then add `\n\n` and the block. Used
- * when splicing an ADDED requirement (or an absent MODIFIED one) onto the
- * end of the active body.
- */
-function appendBlock(body: string, block: string): string {
-  return body.replace(/\s+$/, '') + '\n\n' + block;
-}
-
-/**
- * Normalize a verbatim requirement block lifted from a delta file so it can
- * be spliced into the active spec set: trim trailing whitespace and ensure
- * it ends with exactly one newline. The block's interior (body paragraphs,
- * prose between scenarios, bullet shape, etc.) is preserved byte-for-byte —
- * this is the whole point of the source-preserving splice.
- */
-function normalizeBlock(sourceText: string): string {
-  return endWithSingleNewline(sourceText);
-}
-
-/**
- * An in-place edit against the ORIGINAL body offsets: replace
- * `[start, end)` with `text`. A deletion is just `text === ''`.
- */
-interface SpliceEdit {
-  start: number;
-  end: number;
-  text: string;
-}
-
-/**
- * Apply a set of edits expressed against the original body offsets in one
- * right-to-left sweep, so each splice does not invalidate the offsets of
- * the edits still to be applied. Edits must not overlap (callers key edits
- * by a block's original start offset, so at most one edit targets a given
- * requirement block).
- */
-function applyEdits(body: string, edits: SpliceEdit[]): string {
-  let out = body;
-  for (const e of [...edits].sort((a, b) => b.start - a.start)) {
-    out = out.slice(0, e.start) + e.text + out.slice(e.end);
-  }
-  return out;
 }
 
 export interface CapabilityChange {
@@ -108,103 +60,6 @@ export interface ArchivePlan {
   changes: CapabilityChange[];
 }
 
-/**
- * Pure: compute the resulting active content for one capability (no write).
- *
- * Requirements are spliced from the delta's VERBATIM source text rather than
- * re-rendered from `RequirementAst`, so multi-paragraph bodies, prose between
- * scenarios, extra bullets, and non-canonical formatting all survive the
- * round-trip. `deltaText` is the raw delta-file source for this capability;
- * `ast` provides the ordered set of added/modified/removed names per section.
- */
-function computeCapabilityAfter(
-  activePath: string,
-  ast: SpecDeltaAst,
-  deltaText: string,
-): { after: string; warnings: string[] } {
-  const warnings: string[] = [];
-  let body = existsSync(activePath)
-    ? readFileSync(activePath, 'utf8')
-    : `# ${ast.capability}\n`;
-
-  // Verbatim source blocks from the delta, looked up by section + name.
-  const deltaBlocks = extractRequirementBlocks(deltaText);
-  const deltaSource = (section: 'added' | 'modified' | 'removed', name: string): string => {
-    const block = deltaBlocks.find((b) => b.section === section && b.name === name);
-    // The AST and the block extractor walk the same headings, so a name
-    // present in the AST is always present in the blocks; fall back to a
-    // minimal heading only as an impossible-case guard.
-    return block ? normalizeBlock(block.sourceText) : `### Requirement: ${name}\n`;
-  };
-
-  // Parse the active body ONCE and resolve every in-place MODIFIED/REMOVED
-  // edit against those original offsets, instead of re-parsing the whole
-  // body for each requirement (previously O(reqs x parse)). Edits are keyed
-  // by a block's original start offset so at most one edit targets a given
-  // block; because REMOVED runs after MODIFIED, a name present in both
-  // sections resolves to a deletion (the prior replace is overwritten),
-  // exactly reproducing the old "replace in place, then delete" behaviour.
-  // Matching consumes blocks in document order so repeated names map to
-  // successive occurrences, mirroring the old `.find()`-then-mutate loop.
-  const activeBlocks = extractRequirementBlocks(body);
-  const unconsumedByName = new Map<string, RequirementBlock[]>();
-  for (const b of activeBlocks) {
-    const list = unconsumedByName.get(b.name);
-    if (list) list.push(b);
-    else unconsumedByName.set(b.name, [b]);
-  }
-  const takeBlock = (name: string): RequirementBlock | null => {
-    const list = unconsumedByName.get(name);
-    if (!list || list.length === 0) return null;
-    return list.shift() ?? null;
-  };
-
-  const editByStart = new Map<number, SpliceEdit>();
-  const appended: string[] = [];
-
-  for (const req of ast.deltas.modified) {
-    const block = takeBlock(req.name);
-    const rendered = deltaSource('modified', req.name);
-    if (block) {
-      editByStart.set(block.start, { start: block.start, end: block.end, text: rendered });
-    } else {
-      // MODIFIED names a requirement that does not exist in the active set.
-      // This is almost always an authoring mistake (wrong name, or it
-      // should have been ADDED). We still apply it (append) so the delta is
-      // not silently dropped, but we surface a warning so the author can
-      // catch the mismatch.
-      warnings.push(
-        `MODIFIED requirement "${req.name}" was not found in the active set ` +
-          `for ${ast.capability}; appending it as if ADDED. Did you mean to ` +
-          `ADD it, or is the name misspelled?`,
-      );
-      appended.push(rendered);
-    }
-  }
-  for (const req of ast.deltas.removed) {
-    const block = takeBlock(req.name);
-    if (block) {
-      // Overwrites any MODIFIED edit at the same offset: replace-then-delete
-      // is a delete.
-      editByStart.set(block.start, { start: block.start, end: block.end, text: '' });
-    } else {
-      warnings.push(
-        `REMOVED requirement "${req.name}" was not found in the active set ` +
-          `for ${ast.capability}; nothing to remove.`,
-      );
-    }
-  }
-
-  body = applyEdits(body, [...editByStart.values()]);
-  // Absent-MODIFIED appends happen before ADDED appends, preserving the old
-  // ordering (MODIFIED loop ran before the ADDED loop).
-  for (const rendered of appended) body = appendBlock(body, rendered);
-  for (const req of ast.deltas.added) {
-    body = appendBlock(body, deltaSource('added', req.name));
-  }
-  return { after: endWithSingleNewline(body), warnings };
-}
-
 export function buildArchivePlan(repoRoot: string, changeId: string): ArchivePlan {
   const changeDir = changeDirPath(repoRoot, changeId);
   const changes: CapabilityChange[] = [];
@@ -212,8 +67,9 @@ export function buildArchivePlan(repoRoot: string, changeId: string): ArchivePla
     const { ast } = parseSpecDelta(delta.text, delta.absPath);
     const capability = delta.capability;
     const activePath = capabilitySpecPath(repoRoot, capability);
-    const before = existsSync(activePath) ? readFileSync(activePath, 'utf8') : '';
-    const { after, warnings } = computeCapabilityAfter(activePath, ast, delta.text);
+    const currentBody = existsSync(activePath) ? readFileSync(activePath, 'utf8') : null;
+    const before = currentBody ?? '';
+    const { after, warnings } = computeCapabilityAfter(currentBody, ast, delta.text);
     changes.push({
       capability,
       activePath,
@@ -389,6 +245,13 @@ function commitArchive(repoRoot: string, changeId: string): number {
 
 export function runArchive(cwd: string, changeId: string, opts: ArchiveOptions = {}): number {
   const repoRoot = resolve(cwd);
+  if (!isValidChangeId(changeId)) {
+    process.stderr.write(
+      `archive: invalid change-id "${changeId}". Use letters, digits, '.', '_', or '-' ` +
+        `(a single path segment; no separators or '..').\n`,
+    );
+    return 1;
+  }
   if (opts.undo) return runUndo(repoRoot, changeId);
 
   const changeDir = changeDirPath(repoRoot, changeId);

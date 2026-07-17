@@ -24,6 +24,13 @@ export default defineConfig({
       // are excluded from the THRESHOLD only; behaviour is still covered by
       // the CLI/archive/init/eval test suites. The entry point, ajv interop
       // shim, and pure type module have nothing meaningful to measure.
+      //
+      // The risky *pure* logic that used to live inside these spawn-only
+      // shells has been extracted into measured modules so the gate now
+      // protects it: `src/commands/archive-splice.ts` (the MODIFIED/REMOVED/
+      // ADDED splice) and `src/commands/validate-positions.ts` (the ajv
+      // error → source-position resolvers). Those files are NOT excluded and
+      // are unit-tested in-process; only the true I/O shells stay excluded.
       exclude: [
         'src/superspecs.ts',
         'src/schema/ajv.ts',

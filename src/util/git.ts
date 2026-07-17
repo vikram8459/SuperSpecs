@@ -1,8 +1,45 @@
 import { execFileSync, type ExecFileSyncOptions } from 'node:child_process';
+import { toMessage } from './errors.js';
 import { toPosix } from './fs.js';
 
+/**
+ * Upper bound on captured git output. `execFileSync` defaults to 1 MiB and
+ * throws ENOBUFS past it; `git status --porcelain` in a very large/dirty
+ * tree can exceed that, so we raise the ceiling to 64 MiB.
+ */
+const GIT_MAX_BUFFER = 64 * 1024 * 1024;
+
+/**
+ * Wall-clock limit for a single git invocation. Without it, a git command
+ * that blocks on an interactive prompt (credential/GPG helper) or a held
+ * index lock would hang the CLI forever — worst on the data-mutating
+ * archive/`--undo` paths. On timeout, Node kills the child and throws.
+ */
+const GIT_TIMEOUT_MS = 30_000;
+
 function git(args: string[], opts?: ExecFileSyncOptions): string {
-  return execFileSync('git', args, { encoding: 'utf8', ...(opts ?? {}) }).toString();
+  try {
+    return execFileSync('git', args, {
+      encoding: 'utf8',
+      maxBuffer: GIT_MAX_BUFFER,
+      timeout: GIT_TIMEOUT_MS,
+      ...(opts ?? {}),
+    }).toString();
+  } catch (err) {
+    // A timeout surfaces as an error carrying `killed: true` and/or
+    // `signal: 'SIGTERM'`; rewrite it into an actionable message instead of
+    // a raw child_process dump. Other git failures propagate unchanged so
+    // callers that inspect stderr (e.g. headIsArchiveOf) still work.
+    const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+    if (e?.killed && (e.signal === 'SIGTERM' || e.code === 'ETIMEDOUT')) {
+      throw new Error(
+        `git ${args[0] ?? ''} timed out after ${GIT_TIMEOUT_MS} ms ` +
+          `(a credential/GPG prompt or a held index lock can cause this): ${toMessage(err)}`,
+        { cause: err },
+      );
+    }
+    throw err;
+  }
 }
 
 export function gitIsClean(cwd: string): boolean {

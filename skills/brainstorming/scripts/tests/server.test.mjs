@@ -56,6 +56,16 @@ function port(handle) {
   return handle.server.address().port;
 }
 
+/** WebSocket URL including the server's per-session auth token. */
+function wsUrl(handle) {
+  return `ws://127.0.0.1:${port(handle)}/?token=${handle.token}`;
+}
+
+/** HTTP URL for a path including the server's per-session auth token. */
+function httpUrl(handle, pathname = '/') {
+  return `http://127.0.0.1:${port(handle)}${pathname}?token=${handle.token}`;
+}
+
 async function awaitOpen(ws) {
   await new Promise((resolve, reject) => {
     ws.once('open', resolve);
@@ -91,7 +101,7 @@ afterEach(async () => {
 describe('brainstorm-companion server', () => {
   it('accepts a WebSocket connection and closes cleanly', async () => {
     serverHandle = await bootServer();
-    const ws = new WebSocket(`ws://127.0.0.1:${port(serverHandle)}`);
+    const ws = new WebSocket(wsUrl(serverHandle));
     await awaitOpen(ws);
     expect(ws.readyState).toBe(WebSocket.OPEN);
     const closePromise = awaitClose(ws);
@@ -102,7 +112,7 @@ describe('brainstorm-companion server', () => {
 
   it('round-trips a JSON event from client to STATE_DIR/events', async () => {
     serverHandle = await bootServer();
-    const ws = new WebSocket(`ws://127.0.0.1:${port(serverHandle)}`);
+    const ws = new WebSocket(wsUrl(serverHandle));
     await awaitOpen(ws);
 
     const event = { type: 'click', choice: 'option-a', text: 'Option A' };
@@ -129,7 +139,7 @@ describe('brainstorm-companion server', () => {
     // see exactly one 'message' event with the concatenated payload —
     // proving the library handles continuation frames so we don't have to.
     serverHandle = await bootServer();
-    const ws = new WebSocket(`ws://127.0.0.1:${port(serverHandle)}`);
+    const ws = new WebSocket(wsUrl(serverHandle));
     await awaitOpen(ws);
 
     const payload = { choice: 'fragmented', text: 'A'.repeat(40) + '|' + 'B'.repeat(40) };
@@ -154,7 +164,7 @@ describe('brainstorm-companion server', () => {
 
   it('rejects an oversize payload with close code 1009', async () => {
     serverHandle = await bootServer();
-    const ws = new WebSocket(`ws://127.0.0.1:${port(serverHandle)}`);
+    const ws = new WebSocket(wsUrl(serverHandle));
     await awaitOpen(ws);
 
     // MAX_PAYLOAD is set to 256 bytes in beforeEach.
@@ -168,10 +178,32 @@ describe('brainstorm-companion server', () => {
     expect(code).toBe(1009);
   });
 
+  it('rejects an HTTP request without the auth token (403)', async () => {
+    serverHandle = await bootServer();
+    const status = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port(serverHandle)}/`, (res) => {
+        res.resume();
+        resolve(res.statusCode);
+      }).on('error', reject);
+    });
+    expect(status).toBe(403);
+  });
+
+  it('closes a WebSocket opened without the auth token (1008)', async () => {
+    serverHandle = await bootServer();
+    const ws = new WebSocket(`ws://127.0.0.1:${port(serverHandle)}`);
+    const closePromise = awaitClose(ws);
+    // Either the open is followed immediately by a policy-violation close,
+    // or the handshake errors; both mean "not authorized".
+    ws.on('error', () => { /* server may close mid-handshake */ });
+    const { code } = await closePromise;
+    expect(code).toBe(1008);
+  });
+
   it('serves the waiting page over HTTP when no screen has been pushed', async () => {
     serverHandle = await bootServer();
     const body = await new Promise((resolve, reject) => {
-      http.get(`http://127.0.0.1:${port(serverHandle)}/`, (res) => {
+      http.get(httpUrl(serverHandle, '/'), (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => resolve(data));

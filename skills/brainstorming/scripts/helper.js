@@ -1,5 +1,8 @@
 (function() {
-  const WS_URL = 'ws://' + window.location.host;
+  // The page was loaded with a `?token=...` query; carry it onto the
+  // WebSocket URL so the server authorizes this connection (see server.cjs).
+  const token = new URLSearchParams(window.location.search).get('token');
+  const WS_URL = 'ws://' + window.location.host + '/' + (token ? '?token=' + encodeURIComponent(token) : '');
   let ws = null;
   let eventQueue = [];
 

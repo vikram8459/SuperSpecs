@@ -25,6 +25,14 @@
   "files": [
     "dist/",
     "schemas/",
+    "skills/",
+    "commands/",
+    "hooks/",
+    "docs/harnesses.json",
+    ".cursor-plugin/",
+    ".claude-plugin/",
+    "gemini-extension.json",
+    "AGENTS.md",
     "README.md",
     "LICENSE"
   ],

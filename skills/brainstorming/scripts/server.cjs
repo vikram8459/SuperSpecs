@@ -23,6 +23,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 // ========== Configuration ==========
@@ -35,6 +36,23 @@ const CONTENT_DIR = path.join(SESSION_DIR, 'content');
 const STATE_DIR = path.join(SESSION_DIR, 'state');
 const MAX_PAYLOAD_BYTES = Number(process.env.BRAINSTORM_MAX_PAYLOAD || 1024 * 1024); // 1 MiB
 let ownerPid = process.env.BRAINSTORM_OWNER_PID ? Number(process.env.BRAINSTORM_OWNER_PID) : null;
+
+// Per-session auth token. Even though the server binds loopback by default,
+// any local process/browser could otherwise read pushed screens or post
+// events. A token gates both HTTP and WebSocket: it is carried in the
+// reported `url` (so the launcher opens the page with `?token=...`), and the
+// injected helper reads it from the page URL to authenticate its WebSocket.
+// Supply `BRAINSTORM_TOKEN` to pin a value; otherwise a random one is minted.
+const AUTH_TOKEN = process.env.BRAINSTORM_TOKEN || crypto.randomBytes(16).toString('hex');
+
+/** True if the request URL carries the correct `?token=`. */
+function isAuthorized(reqUrl) {
+  try {
+    return new URL(reqUrl, 'http://localhost').searchParams.get('token') === AUTH_TOKEN;
+  } catch (_) {
+    return false;
+  }
+}
 
 const MIME_TYPES = {
   '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
@@ -83,7 +101,13 @@ function getNewestScreen() {
 
 function handleRequest(req, res) {
   touchActivity();
-  if (req.method === 'GET' && req.url === '/') {
+  if (!isAuthorized(req.url)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Forbidden: missing or invalid token');
+    return;
+  }
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+  if (req.method === 'GET' && pathname === '/') {
     const screenFile = getNewestScreen();
     let html = screenFile
       ? (raw => isFullDocument(raw) ? raw : wrapInFrame(raw))(fs.readFileSync(screenFile, 'utf-8'))
@@ -97,8 +121,8 @@ function handleRequest(req, res) {
 
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(html);
-  } else if (req.method === 'GET' && req.url.startsWith('/files/')) {
-    const fileName = req.url.slice(7);
+  } else if (req.method === 'GET' && pathname.startsWith('/files/')) {
+    const fileName = pathname.slice(7);
     const filePath = path.join(CONTENT_DIR, path.basename(fileName));
     if (!fs.existsSync(filePath)) {
       res.writeHead(404);
@@ -131,7 +155,12 @@ function attachWebSocket(server) {
     perMessageDeflate: false
   });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    if (!isAuthorized(req.url)) {
+      // 1008 = policy violation (RFC 6455 §7.4.1).
+      ws.close(1008, 'unauthorized');
+      return;
+    }
     touchActivity();
 
     ws.on('message', (data, isBinary) => {
@@ -266,16 +295,20 @@ function startServer() {
   }
 
   server.listen(PORT, HOST, () => {
+    const boundPort = Number(server.address().port);
+    // The url carries the token so whoever opens it (browser/launcher) is
+    // authenticated; the injected helper reads the token from this url too.
+    const url = 'http://' + URL_HOST + ':' + boundPort + '/?token=' + AUTH_TOKEN;
     const info = JSON.stringify({
-      type: 'server-started', port: Number(server.address().port), host: HOST,
-      url_host: URL_HOST, url: 'http://' + URL_HOST + ':' + Number(server.address().port),
+      type: 'server-started', port: boundPort, host: HOST,
+      url_host: URL_HOST, url, token: AUTH_TOKEN,
       screen_dir: CONTENT_DIR, state_dir: STATE_DIR
     });
     console.log(info);
     fs.writeFileSync(path.join(STATE_DIR, 'server-info'), info + '\n');
   });
 
-  return { server, shutdown };
+  return { server, shutdown, token: AUTH_TOKEN };
 }
 
 if (require.main === module) {

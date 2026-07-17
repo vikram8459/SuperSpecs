@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { REQUIRED_SCHEMA_FILES, SCHEMA_FILES } from '../schema/load.js';
 import { findRootUp } from '../util/install.js';
+import { readJsonFile } from '../util/fs.js';
 
 /** Number of trailing hook-log lines surfaced by `doctor`. */
 const HOOK_LOG_TAIL_LINES = 20;
@@ -27,7 +28,7 @@ interface Check {
 
 function schemaDraft(path: string): string {
   try {
-    const j = JSON.parse(readFileSync(path, 'utf8')) as { $schema?: string };
+    const j = readJsonFile<{ $schema?: string }>(path);
     return j.$schema ?? 'no $schema';
   } catch {
     return 'unreadable';
@@ -47,7 +48,9 @@ function powershellVersion(): string | null {
     const out = execFileSync(
       'powershell',
       ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'],
-      { encoding: 'utf8' },
+      // Informational probe only: cap it so a slow/hanging PowerShell launch
+      // (misconfigured host, profile stall) can't stall `doctor`.
+      { encoding: 'utf8', timeout: 10_000 },
     ).trim();
     return `PowerShell version: ${out}`;
   } catch {
@@ -60,7 +63,7 @@ export function runDoctor(root?: string): number {
 
   const pkgPath = join(base, 'package.json');
   const version = existsSync(pkgPath)
-    ? (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string }).version ?? 'unknown'
+    ? readJsonFile<{ version?: string }>(pkgPath).version ?? 'unknown'
     : 'unknown';
 
   // SUPERSPECS_MODE: report the effective triggering posture and flag an

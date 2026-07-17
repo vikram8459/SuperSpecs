@@ -16,6 +16,19 @@ export function countCheckboxes(body: string): { open: number; done: number } {
   };
 }
 
+/**
+ * mtime in ms for `p`, or 0 if it can't be stat-ed. Mirrors the defensive
+ * pattern in `listChildDirs`: a change folder removed between the directory
+ * listing and this stat (a concurrency race) must not crash `status`.
+ */
+function safeMtimeMs(p: string): number {
+  try {
+    return statSync(p).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
 export interface StatusOptions {
   json?: boolean;
 }
@@ -24,7 +37,7 @@ export function runStatus(cwd: string, opts: StatusOptions = {}): number {
   const paths = openspecPaths(cwd);
 
   const inFlight = listInFlightChanges(cwd)
-    .map((name) => ({ name, mtime: statSync(join(paths.changes, name)).mtimeMs }))
+    .map((name) => ({ name, mtime: safeMtimeMs(join(paths.changes, name)) }))
     .sort((a, b) => b.mtime - a.mtime);
 
   const first = inFlight[0];
