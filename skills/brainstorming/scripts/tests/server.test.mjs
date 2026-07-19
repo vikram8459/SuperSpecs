@@ -200,6 +200,24 @@ describe('brainstorm-companion server', () => {
     expect(code).toBe(1008);
   });
 
+  it('serves a /files/ static asset WITHOUT the auth token', async () => {
+    // A pushed screen references assets as browser sub-resources
+    // (e.g. <img src="/files/x.svg">); the browser can't append the token,
+    // so /files/ must be reachable without it (basename-confined to content).
+    serverHandle = await bootServer();
+    fs.writeFileSync(path.join(sessionDir, 'content', 'asset.svg'), '<svg/>');
+    const { status, body } = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port(serverHandle)}/files/asset.svg`, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => resolve({ status: res.statusCode, body: data }));
+        res.on('error', reject);
+      }).on('error', reject);
+    });
+    expect(status).toBe(200);
+    expect(body).toBe('<svg/>');
+  });
+
   it('serves the waiting page over HTTP when no screen has been pushed', async () => {
     serverHandle = await bootServer();
     const body = await new Promise((resolve, reject) => {

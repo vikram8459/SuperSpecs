@@ -37,12 +37,17 @@ const STATE_DIR = path.join(SESSION_DIR, 'state');
 const MAX_PAYLOAD_BYTES = Number(process.env.BRAINSTORM_MAX_PAYLOAD || 1024 * 1024); // 1 MiB
 let ownerPid = process.env.BRAINSTORM_OWNER_PID ? Number(process.env.BRAINSTORM_OWNER_PID) : null;
 
-// Per-session auth token. Even though the server binds loopback by default,
-// any local process/browser could otherwise read pushed screens or post
-// events. A token gates both HTTP and WebSocket: it is carried in the
-// reported `url` (so the launcher opens the page with `?token=...`), and the
-// injected helper reads it from the page URL to authenticate its WebSocket.
-// Supply `BRAINSTORM_TOKEN` to pin a value; otherwise a random one is minted.
+// Per-session auth token. The server binds loopback by default; the token
+// primarily stops a page from another origin (or a browser that only knows
+// the host:port) from reading pushed screens or posting events, since it can
+// neither guess the value nor read the owner-only server-info file. It is NOT
+// a boundary against arbitrary same-user local processes: the token must be
+// shared with the launcher/owner via stdout and the server-info file, so any
+// process that can read those can obtain it. The token gates both HTTP (`/`)
+// and WebSocket: it is carried in the reported `url` (so the launcher opens
+// the page with `?token=...`), and the injected helper reads it from the page
+// URL to authenticate its WebSocket. Supply `BRAINSTORM_TOKEN` to pin a
+// value; otherwise a random one is minted.
 const AUTH_TOKEN = process.env.BRAINSTORM_TOKEN || crypto.randomBytes(16).toString('hex');
 
 /** True if the request URL carries the correct `?token=`. */
@@ -101,12 +106,35 @@ function getNewestScreen() {
 
 function handleRequest(req, res) {
   touchActivity();
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+
+  // Static assets under /files/ are served WITHOUT the token gate: a pushed
+  // screen references them as sub-resources (e.g. <img src="/files/x.png">)
+  // and the browser can't append the session token to those URLs. They are
+  // confined to CONTENT_DIR via path.basename, so this exposes only files the
+  // agent itself placed for the screen. The token still gates the screen page
+  // (`/`) and the WebSocket channel.
+  if (req.method === 'GET' && pathname.startsWith('/files/')) {
+    const fileName = pathname.slice(7);
+    const filePath = path.join(CONTENT_DIR, path.basename(fileName));
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(fs.readFileSync(filePath));
+    return;
+  }
+
   if (!isAuthorized(req.url)) {
     res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Forbidden: missing or invalid token');
     return;
   }
-  const pathname = new URL(req.url, 'http://localhost').pathname;
+
   if (req.method === 'GET' && pathname === '/') {
     const screenFile = getNewestScreen();
     let html = screenFile
@@ -121,18 +149,6 @@ function handleRequest(req, res) {
 
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(html);
-  } else if (req.method === 'GET' && pathname.startsWith('/files/')) {
-    const fileName = pathname.slice(7);
-    const filePath = path.join(CONTENT_DIR, path.basename(fileName));
-    if (!fs.existsSync(filePath)) {
-      res.writeHead(404);
-      res.end('Not found');
-      return;
-    }
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(fs.readFileSync(filePath));
   } else {
     res.writeHead(404);
     res.end('Not found');
@@ -305,7 +321,14 @@ function startServer() {
       screen_dir: CONTENT_DIR, state_dir: STATE_DIR
     });
     console.log(info);
-    fs.writeFileSync(path.join(STATE_DIR, 'server-info'), info + '\n');
+    // server-info carries the session token (the launcher reads the
+    // authenticated url from it), so write it owner-only. writeFileSync's
+    // `mode` only applies when the file is created, so chmod afterwards to
+    // also tighten a pre-existing file (no-op on platforms without POSIX
+    // perms, e.g. Windows).
+    const infoPath = path.join(STATE_DIR, 'server-info');
+    fs.writeFileSync(infoPath, info + '\n', { mode: 0o600 });
+    try { fs.chmodSync(infoPath, 0o600); } catch (_) { /* best effort */ }
   });
 
   return { server, shutdown, token: AUTH_TOKEN };
