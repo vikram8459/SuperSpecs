@@ -53,7 +53,11 @@ const AUTH_TOKEN = process.env.BRAINSTORM_TOKEN || crypto.randomBytes(16).toStri
 /** True if the request URL carries the correct `?token=`. */
 function isAuthorized(reqUrl) {
   try {
-    return new URL(reqUrl, 'http://localhost').searchParams.get('token') === AUTH_TOKEN;
+    const got = new URL(reqUrl, 'http://localhost').searchParams.get('token');
+    // Constant-time comparison so a token guess can't be recovered by timing.
+    const a = Buffer.from(got == null ? '' : got);
+    const b = Buffer.from(AUTH_TOKEN);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   } catch (_) {
     return false;
   }
@@ -115,17 +119,29 @@ function handleRequest(req, res) {
   // agent itself placed for the screen. The token still gates the screen page
   // (`/`) and the WebSocket channel.
   if (req.method === 'GET' && pathname.startsWith('/files/')) {
-    const fileName = pathname.slice(7);
-    const filePath = path.join(CONTENT_DIR, path.basename(fileName));
-    if (!fs.existsSync(filePath)) {
+    // basename confines to CONTENT_DIR; an empty name would resolve to the
+    // directory itself (readFileSync -> EISDIR), so reject it up front.
+    const name = path.basename(pathname.slice(7));
+    if (!name || name === '.' || name === '..') {
       res.writeHead(404);
       res.end('Not found');
+      return;
+    }
+    const filePath = path.join(CONTENT_DIR, name);
+    let data;
+    try {
+      data = fs.readFileSync(filePath);
+    } catch (err) {
+      // Missing file (or a delete/permission/EISDIR race between check and
+      // read) must not crash the server; report it instead.
+      res.writeHead(err && err.code === 'ENOENT' ? 404 : 500);
+      res.end(err && err.code === 'ENOENT' ? 'Not found' : 'Internal error');
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': contentType });
-    res.end(fs.readFileSync(filePath));
+    res.end(data);
     return;
   }
 
