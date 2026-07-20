@@ -189,14 +189,16 @@ strings.
 - A non-GitHub remote produces a clear warning instead of a silent
   wrong URL.
 
-### ADR-005 — CLI runtime: Node 20.x LTS + TypeScript
+### ADR-005 — CLI runtime: Node (`engines.node >= 20.19.0`) + TypeScript
 
-**Date:** 2026-05-27 · **Status:** Accepted
+**Date:** 2026-05-27 · **Status:** Accepted (baseline updated 2026-07-17)
 
 #### Decision
 
 The `superspecs` CLI is implemented in TypeScript (target es2022,
-module nodenext, strict mode) targeting Node.js 20.x LTS. Built
+module nodenext, strict mode). The supported runtime is the single
+source of truth in `package.json` — `engines.node` is `>=20.19.0`
+(the floor required by the Vitest 4 / Vite 8 toolchain). Built
 output lives in `dist/`. The published `bin` entry (`superspecs`) maps
 to `dist/superspecs.js`. Dependencies: `commander`, `ajv`,
 `fast-glob`, `unified`, `remark-parse`, `unist-util-visit`. Dev deps:
@@ -204,8 +206,8 @@ to `dist/superspecs.js`. Dependencies: `commander`, `ajv`,
 
 #### Consequences
 
-- Contributors need Node 20.x on `PATH` to run `npm install`,
-  `npm run build`, `npm test`.
+- Contributors need Node matching `engines.node` (`>=20.19.0`) on
+  `PATH` to run `npm install`, `npm run build`, `npm test`.
 - Mirrors OpenSpec's `src/`, `schemas/`, `vitest.config.ts`
   layout, so patterns transfer 1:1.
 - `npm publish` as `@superspecs/cli` (Finding 1.7) is one
@@ -357,9 +359,9 @@ it lives inside the SuperSpecs repo as a local-only helper.
   used capability referenced from the brainstorming skill's offer
   flow. Removing it would be a behaviour regression.
 - **Node 22+ built-in `WebSocket`.** Rejected for now because the CLI
-  declares `engines.node >= 20.0.0`; tying the visual companion to a
-  newer baseline than the CLI would create install surprises. Revisit
-  when the project bumps to Node 22+.
+  declares `engines.node` `>=20.19.0` (see ADR-005); tying the visual
+  companion to a newer baseline than the CLI would create install
+  surprises. Revisit when the project bumps to Node 22+.
 
 ### ADR-011 — Multi-tool generalization via per-harness canonical paths
 
@@ -462,3 +464,59 @@ uses SessionStart hooks) one branch in the envelope dispatch.
 
 None required. All five harnesses work in the same repo simultaneously
 once this ADR is implemented. Cursor users see no change.
+
+### ADR-012 — npm package ships the full framework (self-contained tarball)
+
+**Date:** 2026-07-17 · **Status:** Accepted
+
+#### Context
+
+`package.json` `files` originally published only `dist/`, `schemas/`,
+`README.md`, and `LICENSE`. But two CLI commands resolve framework
+assets relative to the installed package root:
+
+- `superspecs init --harness=<name>` locates the install via
+  `findInstallRoot()` → `findRootUp(here, ['docs/harnesses.json',
+  '.cursor-plugin'])`, then copies the named harness's manifest, hook
+  config, and/or `AGENTS.md` (see `docs/harnesses.json`).
+- `superspecs doctor` asserts the existence of `hooks/session-start`,
+  `hooks/session-start.ps1`, `.cursor-plugin/plugin.json`, and the
+  schemas, relative to the package root.
+
+For a user installing from npm (`npm i -g @superspecs/cli`), those
+paths (`hooks/`, `docs/`, `.cursor-plugin/`, `.claude-plugin/`,
+`skills/`, `commands/`, `AGENTS.md`, `gemini-extension.json`) were
+absent from the tarball, so `init --harness=cursor` failed with
+"could not locate the SuperSpecs install" and `doctor` reported the
+required hooks/manifest as MISSING and exited non-zero — on a healthy
+install. The two commands were effectively broken on the primary
+distribution channel.
+
+#### Decision
+
+Make the npm tarball self-contained. `package.json` `files` now also
+ships `skills/`, `commands/`, `hooks/`, `docs/harnesses.json`,
+`.cursor-plugin/`, `.claude-plugin/`, `gemini-extension.json`, and
+`AGENTS.md`. This matches the bundled experience ADR-005/011 already
+imply (the same repo serves every harness) and keeps `init`/`doctor`
+working identically whether the CLI is run from a git checkout or an
+npm install.
+
+#### Consequences
+
+- `superspecs init --harness=<name>` and `superspecs doctor` work from
+  an npm global install, not only from a source checkout.
+- The published package is larger (it now carries the skill/command
+  markdown and hook scripts), which is the intended trade-off for a
+  framework distributed as a CLI.
+- Adding a new harness asset means remembering to keep it inside one of
+  the `files` globs (the harness manifests already live under
+  already-shipped roots).
+
+#### Alternatives considered
+
+- **Keep the CLI standalone and degrade gracefully.** Rejected: it
+  would require `doctor`/`init --harness` to special-case a "CLI-only"
+  install and print clone-the-repo guidance, splitting the user
+  experience across two install shapes for no benefit. The framework
+  is the product; shipping it whole is simpler and matches ADR-011.

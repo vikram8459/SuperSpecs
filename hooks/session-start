@@ -70,9 +70,22 @@ escape_for_json() {
     local s="$1"
     s="${s//\\/\\\\}"
     s="${s//\"/\\\"}"
+    s="${s//$'\b'/\\b}"
+    s="${s//$'\f'/\\f}"
     s="${s//$'\n'/\\n}"
     s="${s//$'\r'/\\r}"
     s="${s//$'\t'/\\t}"
+    # Any remaining C0 control char (U+0000–U+001F) is invalid raw in a JSON
+    # string and must be emitted as \u00XX — matching PowerShell's
+    # ConvertTo-Json, which escapes the full control range. \b \f \n \r \t
+    # already have short escapes above; NUL cannot appear in a bash variable.
+    # Replace each of the rest with its \u escape.
+    local code hex ch
+    for code in 1 2 3 4 5 6 7 11 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31; do
+        printf -v ch '\'"$(printf '%03o' "$code")"
+        printf -v hex '%04x' "$code"
+        s="${s//$ch/\\u$hex}"
+    done
     printf '%s' "$s"
 }
 

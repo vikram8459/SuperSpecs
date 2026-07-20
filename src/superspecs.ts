@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { toMessage } from './util/errors.js';
+import { readJsonFile } from './util/fs.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(
-  readFileSync(join(here, '..', 'package.json'), 'utf8'),
-) as { version: string };
+const pkg = readJsonFile<{ version: string }>(join(here, '..', 'package.json'));
 
 const program = new Command();
 
@@ -27,7 +25,7 @@ program
   )
   .action(async (opts: { force?: boolean; harness?: string }) => {
     const { runInit } = await import('./commands/init.js');
-    process.exit(runInit(process.cwd(), opts));
+    process.exitCode = runInit(process.cwd(), opts);
   });
 
 program
@@ -37,11 +35,9 @@ program
   .option('--json', 'emit machine-readable JSON to stdout instead of text')
   .action(async (changeId: string | undefined, opts: { active?: boolean; json?: boolean }) => {
     const { runValidate, runValidateActive } = await import('./commands/validate.js');
-    process.exit(
-      opts.active
-        ? runValidateActive(process.cwd(), { json: opts.json })
-        : runValidate(process.cwd(), changeId, { json: opts.json }),
-    );
+    process.exitCode = opts.active
+      ? runValidateActive(process.cwd(), { json: opts.json })
+      : runValidate(process.cwd(), changeId, { json: opts.json });
   });
 
 program
@@ -50,7 +46,7 @@ program
   .option('--json', 'emit machine-readable JSON to stdout instead of text')
   .action(async (opts: { json?: boolean }) => {
     const { runList } = await import('./commands/list.js');
-    process.exit(runList(process.cwd(), { json: opts.json }));
+    process.exitCode = runList(process.cwd(), { json: opts.json });
   });
 
 program
@@ -59,7 +55,7 @@ program
   .option('--json', 'emit machine-readable JSON to stdout instead of text')
   .action(async (opts: { json?: boolean }) => {
     const { runStatus } = await import('./commands/status.js');
-    process.exit(runStatus(process.cwd(), { json: opts.json }));
+    process.exitCode = runStatus(process.cwd(), { json: opts.json });
   });
 
 program
@@ -69,7 +65,7 @@ program
   .option('--undo', 'restore the active spec set from the change snapshot and un-archive')
   .action(async (changeId: string, opts: { dryRun?: boolean; undo?: boolean }) => {
     const { runArchive } = await import('./commands/archive.js');
-    process.exit(runArchive(process.cwd(), changeId, opts));
+    process.exitCode = runArchive(process.cwd(), changeId, opts);
   });
 
 program
@@ -77,7 +73,7 @@ program
   .description('print a health report for the local SuperSpecs install')
   .action(async () => {
     const { runDoctor } = await import('./commands/doctor.js');
-    process.exit(runDoctor());
+    process.exitCode = runDoctor();
   });
 
 program
@@ -85,16 +81,18 @@ program
   .description('run skill evals (replay recorded transcripts; default tests/skills/**/*.eval.json)')
   .action(async (glob?: string) => {
     const { runEval } = await import('./commands/eval.js');
-    process.exit(await runEval(process.cwd(), glob));
+    process.exitCode = await runEval(process.cwd(), glob);
   });
 
 // Top-level error boundary: a command action that throws (e.g. a malformed
 // user file, an unexpected fs error) should surface a single clean line and
 // a non-zero exit code, not a raw Node stack trace. Commands that succeed or
-// fail normally call process.exit() inside their action and never reach here.
+// fail normally set process.exitCode inside their action; setting the code
+// here (rather than calling process.exit) lets buffered stdout/stderr flush
+// before Node exits, so piped output (e.g. `--json`) is never truncated.
 try {
   await program.parseAsync(process.argv);
 } catch (err) {
   process.stderr.write(`superspecs: ${toMessage(err)}\n`);
-  process.exit(1);
+  process.exitCode = 1;
 }

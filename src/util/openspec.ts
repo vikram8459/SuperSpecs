@@ -1,6 +1,35 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import fg from 'fast-glob';
+
+/**
+ * A change-id must be a single, safe path segment: letters, digits, dot,
+ * underscore, and hyphen only — and never the traversal names `.`/`..`.
+ * Every command that accepts a change-id validates it against this before
+ * the id is joined into a filesystem path, so a value like `../../foo`
+ * can never escape the `openspec/` tree in a rename/copy/recursive-delete.
+ */
+const CHANGE_ID_RE = /^[A-Za-z0-9._-]+$/;
+
+/** True if `id` is a safe single-segment change-id (see {@link CHANGE_ID_RE}). */
+export function isValidChangeId(id: string): boolean {
+  return id.length > 0 && id !== '.' && id !== '..' && CHANGE_ID_RE.test(id);
+}
+
+/**
+ * Join `segment` under `base` and assert the result stays inside `base`.
+ * Defense-in-depth backstop for the path builders below: even if a caller
+ * skips {@link isValidChangeId}, a traversal segment throws here rather
+ * than resolving to a path outside the intended tree.
+ */
+function joinWithin(base: string, segment: string): string {
+  const baseResolved = resolve(base);
+  const target = resolve(baseResolved, segment);
+  if (target !== baseResolved && !target.startsWith(baseResolved + sep)) {
+    throw new Error(`refusing to resolve a path outside ${baseResolved}: "${segment}"`);
+  }
+  return target;
+}
 
 /**
  * Canonical locations within an OpenSpec workspace, derived once from a
@@ -30,7 +59,7 @@ export function openspecPaths(cwd: string): OpenSpecPaths {
 
 /** Path to an in-flight change folder: openspec/changes/<changeId>. */
 export function changeDir(cwd: string, changeId: string): string {
-  return join(openspecPaths(cwd).changes, changeId);
+  return joinWithin(openspecPaths(cwd).changes, changeId);
 }
 
 /** Path to a capability's active spec under openspec/specs/<capability>/. */
@@ -40,7 +69,7 @@ export function capabilitySpecPath(cwd: string, capability: string): string {
 
 /** Path to the snapshot dir for a change: openspec/.snapshots/<changeId>. */
 export function snapshotPath(cwd: string, changeId: string): string {
-  return join(openspecPaths(cwd).openspec, '.snapshots', changeId);
+  return joinWithin(join(openspecPaths(cwd).openspec, '.snapshots'), changeId);
 }
 
 /** A spec-delta file under `specs/<capability>/` plus its raw source. */
