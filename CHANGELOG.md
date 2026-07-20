@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-07-20
+
 ### Added
 - **Security:** `superspecs archive`/`validate` now reject an unsafe `change-id`. A change-id must be a single path segment (`[A-Za-z0-9._-]+`, never `.`/`..`); the path builders (`changeDir`/`snapshotPath`) additionally confine the resolved path within `openspec/`. Prevents a crafted id (e.g. `../../foo`) from escaping the tree in the rename/copy/recursive-delete that archive performs. Added `isValidChangeId` in `src/util/openspec.ts`.
-- **Security:** the brainstorm-companion server (`skills/brainstorming/scripts/server.cjs`) now gates HTTP and WebSocket access with a per-session token (`BRAINSTORM_TOKEN`, or a random one). The token is carried in the reported `url` and injected helper; unauthorized HTTP requests get `403` and unauthorized WebSocket handshakes are closed with `1008`.
+- **Security:** the brainstorm-companion server (`skills/brainstorming/scripts/server.cjs`) now gates the screen page (`/`) and WebSocket access with a per-session token (`BRAINSTORM_TOKEN`, or a random one). The token is carried in the reported `url` and injected helper; unauthorized HTTP requests get `403` and unauthorized WebSocket handshakes are closed with `1008`. Static `/files/<name>` assets stay reachable without the token (confined to the content dir via `path.basename`, with empty/`.`/`..` names rejected) so a pushed screen's browser sub-resources still load; the token is compared with `crypto.timingSafeEqual`, and the token-bearing `server-info` file is written owner-only (`0600`).
 - `src/commands/archive-splice.ts` and `src/commands/validate-positions.ts` — the pure splice logic (`computeCapabilityAfter`/`applyEdits`/…) and ajv error→position resolvers, extracted from the spawn-only shells so they are unit-tested in-process and protected by the coverage gate (`tests/commands/archive-splice.test.ts`, `tests/commands/validate-positions.test.ts`).
 - `design.md` validation (error prefix **SDD200–SDD299**): `superspecs validate` now checks `openspec/changes/<id>/design.md` **only when the file is present** — **SDD200** (missing/empty `# <Title>`) and **SDD201** (empty `## Decisions`). `## Context` and `## Alternatives Considered` remain optional. Adds `schemas/design.schema.json`, `src/parser/design.ts`, registration in `src/schema/load.ts` (incl. `REQUIRED_SCHEMA_FILES`), and updates `schemas/README.md`.
 - `--json` output mode for `superspecs validate` / `validate --active` / `list` / `status`, emitting structured JSON to stdout for machine/token-efficient consumption. Exit codes and human-readable text output are unchanged.
@@ -130,6 +132,7 @@ Initial public release of SuperSpecs (tagged `v0.1.0`).
 - MIT License.
 - Initial README with badges, table of contents, Quick Start, Slash Commands section, and brownfield philosophy.
 
-[Unreleased]: https://github.com/vikram8459/SuperSpecs/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/vikram8459/SuperSpecs/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/vikram8459/SuperSpecs/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/vikram8459/SuperSpecs/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/vikram8459/SuperSpecs/releases/tag/v0.1.0
