@@ -10,6 +10,13 @@ updates:
       # Batch low-risk dev tooling bumps into a single PR to reduce noise.
       dev-tooling:
         dependency-type: development
+    ignore:
+      # @types/node is intentionally pinned to the supported runtime major
+      # (engines.node >=20.19.0, ADR-005). Major bumps (e.g. 26.x) outrun the
+      # runtime we support and were reverted once already; do not re-propose
+      # them. See the closed dev-tooling bump (#26).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # The brainstorm visual-companion sub-package has its own lockfile.
   - package-ecosystem: npm
