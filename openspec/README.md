@@ -1,6 +1,6 @@
-# SuperSpecs OpenSpec workspace
+# SuperSpecs workspace
 
-This is SuperSpecs' own OpenSpec workspace — the framework dogfoods the
+This is SuperSpecs' workspace — the framework dogfoods the
 Spec-Driven Development workflow it teaches.
 
 - `specs/<capability>/spec.md` — the active spec set describing the CLI's
