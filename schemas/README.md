@@ -27,6 +27,7 @@ references.
 | SDD012 | tasks | Top-level `tasks` array is empty |
 | SDD013 | tasks (parser) | Task lists files via unsupported bullet markup (`Create:`/`Modify:`/`Test:`/…) instead of the inline `Files:` line; suppresses the bare SDD011 for that task |
 | SDD050 | parser | Duplicate requirement name within a delta section |
+| SDD060 | linkage | ADDED/MODIFIED spec delta requirement not referenced by any task in `tasks.md` (the "every delta has a task" rule, enforced across `specs/` + `tasks.md`; REMOVED requirements are exempt) |
 | SDD100 | proposal | Missing `## Why` section |
 | SDD101 | proposal | Empty `## What Changes` bullet list |
 | SDD102 | proposal | Missing `## Impact` section |
@@ -41,6 +42,22 @@ namespaced by prefix so future phases can add safely.
 When the file IS present, it must carry a non-empty title and at least
 one `## Decisions` bullet. `## Context` and `## Alternatives Considered`
 are recommended but not required.
+
+**SDD060 (linkage)** is not produced by a single schema; it is a
+cross-artifact rule checked by `superspecs validate` over `specs/` and
+`tasks.md` together. Every **ADDED** or **MODIFIED** requirement declared in
+a change's spec deltas must be referenced by at least one task's `Spec:` line
+(matched by requirement name + capability). This is the "the spec is the
+source of truth" invariant made machine-checkable: a new or changed
+requirement that no task implements is an orphan and fails validation. It is
+the mirror of SDD010 (a task with no `Spec:` line).
+
+**REMOVED** requirements are exempt: deleting a requirement from the spec can
+be pure cleanup with no corresponding implementation task.
+
+A single task may carry **multiple `Spec:` lines** to implement several
+requirements — each one counts toward linkage independently, so one task can
+legitimately satisfy SDD060 for more than one requirement.
 
 ## Usage
 
@@ -75,7 +92,9 @@ The current parser recognises one task format:
 ```
 
 The `Spec:` and `Files:` sub-bullets must use inline comma-separated
-values (not nested bullets). Variants like `- Create: <path>`,
+values (not nested bullets). A task may repeat the `Spec:` line to
+reference more than one requirement (each is checked independently by the
+SDD060 linkage rule). Variants like `- Create: <path>`,
 `- Modify: <path>`, and `- Test: <path>` are NOT recognised; a task
 authored that way (with no `Files:` line) reports **SDD013**, a
 targeted hint that names the task and the offending bullet and tells

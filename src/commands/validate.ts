@@ -5,6 +5,7 @@ import { parseProposal } from '../parser/proposal.js';
 import { parseSpecDelta } from '../parser/spec-delta.js';
 import { parseTasks, type TasksAst } from '../parser/tasks.js';
 import { parseDesign } from '../parser/design.js';
+import { checkLinkage, type LinkageRequirement } from './linkage.js';
 import { validators } from '../schema/load.js';
 import { ajvToCliErrors, formatError } from '../schema/errors.js';
 import type { Diagnostic, Position } from '../util/diagnostics.js';
@@ -166,6 +167,51 @@ function validateDesignFile(repoRoot: string, changeDir: string): Diagnostic[] {
   );
 }
 
+/**
+ * Flatten every `Spec:` reference from a change's `tasks.md`. Returns `[]`
+ * when tasks.md is absent (an absent file surfaces via the proposal/spec-delta
+ * checks, not here). Used by {@link validateLinkageFiles}.
+ */
+function collectTaskSpecRefs(changeDir: string): string[] {
+  const tasksPath = join(changeDir, 'tasks.md');
+  if (!existsSync(tasksPath)) return [];
+  const text = readFileSync(tasksPath, 'utf8');
+  const { ast } = parseTasks(text, tasksPath);
+  return ast.tasks.flatMap((t) => t.specRefs);
+}
+
+/**
+ * Enforce spec↔task linkage: every requirement declared in a change's spec
+ * deltas must be referenced by at least one task (SDD060). Errors point at
+ * the requirement heading in its delta file. Complements SDD010 (a task with
+ * no `Spec:` line) by catching the opposite orphan — a requirement no task
+ * implements.
+ */
+function validateLinkageFiles(repoRoot: string, changeDir: string): Diagnostic[] {
+  const specRefs = collectTaskSpecRefs(changeDir);
+  const out: Diagnostic[] = [];
+  for (const delta of loadSpecDeltas(changeDir)) {
+    const relPath = relative(repoRoot, delta.absPath);
+    const { ast, positions } = parseSpecDelta(delta.text, relPath);
+    const reqs: LinkageRequirement[] = [];
+    // Only ADDED/MODIFIED requirements must have an implementing task: they
+    // introduce or change behavior that code has to realize. REMOVED
+    // requirements are intentionally exempt — deleting a requirement from the
+    // spec can be pure cleanup with no corresponding implementation task.
+    for (const section of ['added', 'modified'] as const) {
+      ast.deltas[section].forEach((r, idx) => {
+        const p = positions[section][idx]?.position;
+        if (!p) return;
+        reqs.push({ capability: ast.capability, name: r.name, section, line: p.line, col: p.col });
+      });
+    }
+    for (const e of checkLinkage(reqs, specRefs)) {
+      out.push({ file: relPath, line: e.line, col: e.col, code: e.code, message: e.message });
+    }
+  }
+  return out;
+}
+
 function validateChange(repoRoot: string, changeId: string): Diagnostic[] {
   const changeDir = changeDirPath(repoRoot, changeId);
   return [
@@ -173,6 +219,7 @@ function validateChange(repoRoot: string, changeId: string): Diagnostic[] {
     ...validateSpecDeltaFiles(repoRoot, changeDir),
     ...validateTasksFile(repoRoot, changeDir),
     ...validateDesignFile(repoRoot, changeDir),
+    ...validateLinkageFiles(repoRoot, changeDir),
   ];
 }
 

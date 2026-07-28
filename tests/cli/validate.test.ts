@@ -65,6 +65,21 @@ describe('validate subcommand', () => {
     expect(r.stderr).toMatch(/openspec\/changes\/good-x\/tasks\.md:\d+:\d+: SDD010/);
   });
 
+  it('scenario: a requirement no task references fails with SDD060', () => {
+    // GIVEN a change whose spec delta adds "Foo" in x, but whose only task
+    // references a different requirement ("Baz") — so Foo is an orphan
+    const dir = setup('validate-delta-no-task');
+    // WHEN superspecs validate is run
+    const r = run(dir, ['validate', 'good-x']);
+    // THEN exit non-zero and the SDD060 linkage error points at the
+    // requirement heading in the spec delta file, naming the requirement
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/openspec\/changes\/good-x\/specs\/x\/spec\.md:\d+:\d+: SDD060/);
+    expect(r.stderr).toMatch(/Foo/);
+    // AND the task itself is well-formed (has a Spec: line), so no SDD010
+    expect(r.stderr).not.toMatch(/SDD010/);
+  });
+
   it('scenario: proposal error points at the section heading line (CF-E-2)', () => {
     // GIVEN a proposal whose `## What Changes` heading (line 7) has no bullets
     const dir = setup('validate-proposal-empty-section');

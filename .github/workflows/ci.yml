@@ -40,6 +40,31 @@ jobs:
         if: '!(matrix.os == ''ubuntu-latest'' && matrix.node == ''20'')'
         run: npm test
 
+  # SuperSpecs validates its own OpenSpec workspace with its own CLI: the
+  # framework must pass the Spec-Driven Development workflow it teaches
+  # (the "eats its own dogfood" claim, made mechanically enforceable).
+  dogfood:
+    name: dogfood (validate own openspec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Validate the active spec set
+        run: node dist/superspecs.js validate --active
+      # Validate every in-flight change folder too. Discovered dynamically
+      # (no hard-coded id), so it self-adjusts as changes are added or
+      # archived. Skipped while a PR is a Draft so authors can iterate on an
+      # incomplete change folder; enforced once the PR is marked ready and on
+      # every push to main.
+      - name: Validate in-flight changes (skipped on draft PRs)
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        run: node dist/superspecs.js validate
+
   audit:
     name: dependency audit
     runs-on: ubuntu-latest
