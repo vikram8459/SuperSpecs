@@ -14,9 +14,19 @@ the framework teaches.
    - Open an OpenSpec change folder under
      `openspec/changes/<change-id>/` with at minimum `proposal.md`,
      `design.md` (if non-obvious decisions), `specs/` deltas, and
-     `tasks.md`. See `docs/openspec-walkthrough.md`.
+     `tasks.md`. See `docs/openspec-walkthrough.md`, and
+     `openspec/changes/add-spec-linkage-validation/` for a real,
+     validated example in this repo.
    - Get the proposal approved (in PR comments or the chat) **before**
      writing implementation code.
+
+This repo dogfoods its own workflow: the active spec set lives at
+`openspec/specs/` and the CI `dogfood` job runs
+`superspecs validate --active` against it. It also runs
+`superspecs validate` over every in-flight change folder — skipped while a
+PR is a **Draft** so you can iterate on an incomplete change, and enforced
+once the PR is marked ready for review (and on every push to `main`). Keep
+your PR in Draft until `superspecs validate` passes locally.
 
 ## Authoring a Skill
 

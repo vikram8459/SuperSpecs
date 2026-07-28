@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Spec↔task linkage validation (SDD060, F5):** `superspecs validate` now
+  reports **SDD060** for any ADDED or MODIFIED requirement declared in a
+  change's spec deltas that is not referenced by at least one task's `Spec:`
+  line (matched by requirement name + capability). REMOVED requirements are
+  exempt, and a task may carry multiple `Spec:` lines to cover several
+  requirements. This moves the "every delta has a task" rule out of the
+  `spx:openspec-propose` manual self-review and into the CLI, making the
+  "the spec is the source of truth" invariant machine-checkable. It is the
+  mirror of SDD010 (a task with no `Spec:` line). Adds the pure
+  `src/commands/linkage.ts` checker (inside the coverage gate),
+  `tests/commands/linkage.test.ts`, the `validate-delta-no-task` fixture, and
+  a CLI scenario in `tests/cli/validate.test.ts`; documents the code in
+  `schemas/README.md`.
+- **Self-hosted OpenSpec workspace (F2):** the repo now contains a real
+  `openspec/` — an active spec set at `openspec/specs/` covering all eight CLI
+  capabilities (validate, archive, init, hooks, list, status, doctor, eval)
+  plus a worked in-flight example at
+  `openspec/changes/add-spec-linkage-validation/`. A new CI `dogfood` job runs
+  `superspecs validate --active` against the active set and
+  `superspecs validate` over the in-flight change folders (discovered
+  dynamically, so it self-adjusts as changes are added or archived; skipped
+  while a PR is a Draft so authors can iterate on an incomplete change). The
+  "SuperSpecs eats its own dogfood" claim is thus enforced rather than
+  asserted. `CONTRIBUTING.md` now points contributors at the live example.
+
+### Changed
+- **Coverage gate (F6):** ratcheted the `branches` threshold back from 60 to
+  75 in `vitest.config.ts` (measured ~78% after added branch coverage,
+  including the extracted pure modules), matching the other three thresholds
+  and closing the temporary Vitest-4 remapping regression.
+
 ## [1.1.0] — 2026-07-20
 
 ### Added
